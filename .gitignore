@@ -2,9 +2,9 @@
 .idea/
 .DS_Store
 baseline/project
-# baseline/result.zip
-# sc_cluster/result
-# sc_cluster/demo/data
+baseline/result.zip
+sc_cluster/result
+sc_cluster/demo/data
 
 
 # Byte-compiled / optimized / DLL files
