@@ -135,7 +135,7 @@ n_genes <- nrow(gene_expression_data)
 # returns a cluster (rows) by cell types (cols) matrix, with p-value entries
 enrichment_prob <- calculate_enrichment_prob(cluster_markers_list, panglao_marker_list, n_genes, type = "jacc")
 
-######################################################################
+
 # Visualizing marker genes:
 # example marker list:
 selected_marker_genes <- c("SOX2", "ALDOC", "CCND2", "OLIG1", "OLIG2")
@@ -146,8 +146,8 @@ processed_markers <- process_marker_expression(gene_expression_subset, sc_cluste
 cell_levels <- unique(sc_clusters)
 gene_levels <- selected_marker_genes
 marker_plot <- plot_marker_expression(processed_markers, gene_levels=gene_levels, cell_levels=cell_levels)
-
 '''
+
 
 
 ### - Example results
