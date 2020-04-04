@@ -135,7 +135,7 @@ n_genes <- nrow(gene_expression_data)
 # returns a cluster (rows) by cell types (cols) matrix, with p-value entries
 enrichment_prob <- calculate_enrichment_prob(cluster_markers_list, panglao_marker_list, n_genes, type = "jacc")
 
-
+######################################################################
 # Visualizing marker genes:
 # example marker list:
 selected_marker_genes <- c("SOX2", "ALDOC", "CCND2", "OLIG1", "OLIG2")
@@ -161,6 +161,7 @@ The following figures show the results for a PBMC 68k dataset and the 1.3 millio
 </br>
 
 ### - Scalability
+This section will be updated soon. The time taken to cluster 1.3 million cells (with roughly 20,000 genes) is less than 30 minutes, using 7GB of memory. </br>
 
 ## Citation & References
 
