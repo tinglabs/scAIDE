@@ -146,7 +146,7 @@ processed_markers <- process_marker_expression(gene_expression_subset, sc_cluste
 cell_levels <- unique(sc_clusters)
 gene_levels <- selected_marker_genes
 marker_plot <- plot_marker_expression(processed_markers, gene_levels=gene_levels, cell_levels=cell_levels)
-'''
+```
 
 
 
