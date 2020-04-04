@@ -116,11 +116,11 @@ np.savetxt("~/clt_labels.txt", clt_labels)
 library(scAIDE)
 
 # load original data and clustering results:
-sc_data = read.csv("single_cell_dataset.csv", header = T, row.names = 1) # rows = genes, cols = cells
-sc_clusters = read.table("clt_labels.txt")$V1
+sc_data <- read.csv("single_cell_dataset.csv", header = T, row.names = 1) # rows = genes, cols = cells
+sc_clusters <- read.table("clt_labels.txt")$V1
 # Evaluate wilcox rank sum test and log fold change values
 eval_gene_markers <- store_markers(gene_expression_data, sc_clusters, threads = 8)
-gene_names = rownames(gene_expression_data)
+gene_names <- rownames(gene_expression_data)
 # returns the list of markers for each cluster, with your specified threshold
 cluster_markers_list <- curate_markers(eval_gene_markers, gene_names, wilcox_threshold=0.001, logfc_threshold=1.5)
 
