@@ -259,7 +259,7 @@ if __name__ == '__main__':
 	print('AIDE Input: ', aide_input)
 
 	aide_config = AIDEConfig()
-	aide_model = AIDE(name='aide_for_shekhar', save_folder='aide_for_shekhar')
+	aide_model = AIDE(name='aide_for_retina', save_folder='aide_for_retina')
 	embedding = aide_model.fit_transform(aide_input, aide_config)
 	print(f'Type of embedding = {type(embedding)}; Shape of embedding = {embedding.shape}; Data type of embedding = {embedding.dtype}')
 

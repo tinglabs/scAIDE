@@ -3,11 +3,7 @@ scAIDE
 > scAIDE is an unsupervised clustering framework for single-cell RNA-seq data. We revealed both putative and rare cell types in the 1.3 million neural cell dataset by global clustering. We obtained 64 clusters within 30 minutes, which were then mapped to 19 putative cell types. Three different subpopulations of neural stem/pregenitor cells were identified, each primed for different developmental stages. 
 
 ## Overview
-
-<p align = "center">
-<img src=sample_results/Overview.png alt="Overview" title="Overview" align="centre">
-</p>
-
+![Overview](figures/Overview.png)
 
 ## Table of content
 - [Introduction](#Introduction)
@@ -17,7 +13,7 @@ scAIDE
 - [Example Usage](#example-usage)
     - [Preprocessing](#--Preprocessing)
     - [AIDE](#--AIDE)
-    - [RP-kmeans](#--RP-kmeans)
+    - [RPH-kmeans](#--RPH-kmeans)
     - [Biological Analysis](#--biological-analysis)
     - [Example Results](#--examples-results)
     - [Scalability](#--scalability)
@@ -25,40 +21,40 @@ scAIDE
 - [Maintenance](#Maintenance)
 
 ## Introduction
-There are three main parts to this clustering framework: AIDE embedding, clustering (RP-kmeans), and biological analysis. </br>
-AIDE - autoencoder-imputed distance-preserved embedding (a novel deep learning architecture that learns a good representation of single-cell data accounting for biological noise) </br>
-RP-kmeans - Random projection-based k-means algorithm (a novel algorithm which improves the detection of rare cell types) </br>
-Biological analytics code are packed into an R package, scAIDE.
+There are three main parts to this clustering framework: AIDE embedding, clustering (RPH-kmeans), and biological analysis.
+
+- **AIDE**: autoencoder-imputed distance-preserved embedding (a novel deep learning architecture that learns a good representation of single-cell data accounting for biological noise)
+- **RPH-kmeans**: Random projection hashing based k-means algorithm (a novel algorithm which improves the detection of rare cell types)
+- **biological analysis**: Biological analytics code are packed into an R package, scAIDE.
 
 
 ## Installation
 ### - Required Installations
-AIDE and RP-kmeans are implemented in python, biological analytics code in R.</br>
-Python: tensorflow 1.14, numpy, scipy</br>
-R: parallel, gmp, ggplot2 </br>
+AIDE and RPH-kmeans are implemented in python, biological analytics code in R.
+
+- Python3: tensorflow 1.14, numpy, scipy, scikit_learn, tqdm, seaborn
+- R: parallel, gmp, ggplot2
 
 ### - Install
-AIDE: please refer to https://github.com/tinglabs/aide for details </br>
-RP-kmeans: please refer to https://github.com/tinglabs/rp_kmeans for details </br>
-scAIDE (R package):
-```r
+- AIDE: please refer to [https://github.com/tinglabs/aide](https://github.com/tinglabs/aide) for details.
+- RPH-kmeans: please refer to [https://github.com/tinglabs/rph_kmeans](https://github.com/tinglabs/rph_kmeans) for details.
+- scAIDE (R package):
+
+	```r
 require(devtools)
 setwd("where scAIDE folder is located")
 install("scAIDE")
-
 ```
 
 ## Example Usage:
+A demo is provided in [demo](https://github.com/tinglabs/scAIDE/demo) folder, showing details of data preprocessing, embedding with AIDE and clustering with RPH-kmeans. Two datasets (`Mouse bladder` and `Mouse retina`) are also given.
 
 ### - Preprocessing
-
-A pre-processed single-cell data is accepted, provided that it is normalized and log-transformed (for optimal performance). </br>
-In python, the input is configured as n cells (rows) by m genes (columns).
-
+A pre-processed single-cell data is accepted, provided that it is normalized and log-transformed (for optimal performance). 
+In Python, the input is configured as n cells (rows) by m genes (columns).
 
 
 ### - AIDE
-
 ```python
 # Load data:
 # For small to medium size datasets (up to few hundred thousands of cells)
@@ -67,47 +63,43 @@ import numpy as np
 
 # Make sure that the final input is n cells (rows) by m genes (cols)
 sc_data = pd.read_csv("single_cell_dataset.csv", index_col=0)
-sc_data = sc_data.values
-sc_data = np.array(sc_data).astype('float32')
+sc_data = sc_data.values.astype('float32') # type = np.ndarray
 
 # Configuring AIDE parameters:
 from aide import AIDE, AIDEConfig
 config = AIDEConfig()
-# The following 4 parameters can be tuned, but default values are usually sufficient.
-
+# We may tune the following 4 parameters, but default values are usually sufficient.
 config.pretrain_step_num = 1000 # Pretrain step
 config.ae_drop_out_rate = 0.4 # Dropout rate
-config.alpha = 20.0 # A parameter that determines the portion of AE loss vs MDS encoder loss
+config.alpha = 12.0 # A parameter that determines the portion of AE loss vs MDS encoder loss
 config.early_stop = True # Early stop (maximum step number = 20000, minimum step number = 4000)
 
-# AIDE:
+# Running AIDE:
 encoder = AIDE(name = "sc_test", save_folder = "sc_test_folder")
-sc_embedding = encoder.fit_transform(sc_data, config = config)
+sc_embedding = encoder.fit_transform(sc_data, config=config)
 
 # save embedding
 np.savetxt("~/sc_embedding.txt", sc_embedding)
-
 ```
 
-### - RP kmeans
+### - RPH-kmeans
 
 ```python
-from rp_kmeans import RPKMeans
-clt = RPKMeans(n_init = 10, n_clusters = 10)
+from rph_kmeans import RPHKMeans
+# In the case that n_clusters is already known:
+clt = RPHKMeans(n_init=10, n_clusters=10)
 clt_labels = clt.fit_predict(sc_embedding)
 
-# In order to automatically detect the number of clusters, we implemented a weighted BIC value that determines the optimal k based on 'kneedle' point.
-from rp_kmeans import select_k_with_bic
+# In the case that n_clusters is unknown: In order to automatically detect the number of clusters, 
+# we implemented a weighted BIC value that determines the optimal k based on 'kneedle' point.
+from rph_kmeans import select_k_with_bic
 kmax = 30 # set the maximum number of k to explore
 optimal_k, _, _ = select_k_with_bic(sc_embedding, kmax=kmax)
-
-# re-run with optimal_k to get the clustering results
-clt = RPKMeans(n_init = 10, n_clusters = optimal_k)
+clt = RPHKMeans(n_init=10, n_clusters=optimal_k) # run RPH-kmeans with optimal_k to get the clustering results
 clt_labels = clt.fit_predict(sc_embedding)
 
 # Output results
 np.savetxt("~/clt_labels.txt", clt_labels)
-
 ```
 
 ### - Biological Analysis
@@ -148,20 +140,24 @@ gene_levels <- selected_marker_genes
 marker_plot <- plot_marker_expression(processed_markers, gene_levels=gene_levels, cell_levels=cell_levels)
 ```
 
-
-
 ### - Example results
 We will provide the annotated labels for all the analysis given in the manuscript, these will be updated as .RData files soon. </br>
 The following figures show the results for a PBMC 68k dataset and the 1.3 million neural dataset. 
 
 <p align="center">
-  <img src=sample_results/pbmc.png alt="pbmc" title="pbmc" align="center" height="300">
-  <img src=sample_results/neural.png alt="neural" title="neural" align="center" height="300">
+  <img src=figures/pbmc.png alt="pbmc" title="pbmc" align="center" height="300">
+  <img src= figures/neural.png alt="neural" title="neural" align="center" height="300">
 </p>
-</br>
 
 ### - Scalability
-This section will be updated soon. The time taken to cluster 1.3 million cells (with roughly 20,000 genes) is less than 30 minutes, using 7GB of memory. </br>
+This section will be updated soon. The time taken to cluster 1.3 million cells (with roughly 20,000 genes) is less than 30 minutes, using 7GB of memory.
+
+## File Illustation
+- `sc_cluster`: Codes and results of clustering experiments using AIDE and RPH-kmeans.
+- `baseline`: Codes and results of clustering experiments using baseline tools (e.g. DCA, MAGIC, scScope, scDeepCluster, ...).
+- `demo`: A demo of data preprocessing, embedding with AIDE and clustering with RPH-kmeans.
+- `scAIDE`: The R package of biological analysis.
+- `figures`: Figures of README
 
 ## Citation & References
 
