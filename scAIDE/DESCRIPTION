@@ -1,0 +1,15 @@
+Package: scAIDE
+Title: Clustering large-scale single-cell RNA-seq data reveals putative and rare cell types
+Version: 1.0
+Authors@R: 
+    person(given = "Ken (Kaikun)",
+           family = "Xie",
+           role = c("aut", "cre"),
+           email = "xkk17@mails.tsinghua.edu.cn",
+           comment = c(ORCID = "0000-0001-5775-3095"))
+Description: This package includes the biological analytical functions used in the manuscript. Functions can be used to analyze and visualize marker genes using clustering or annotated results in single-cell data.
+License: What license it uses
+Encoding: UTF-8
+LazyData: true
+Imports: ggplot2, gmp, parallel
+RoxygenNote: 7.1.0.9000
