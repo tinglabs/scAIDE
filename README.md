@@ -41,10 +41,10 @@ AIDE and RPH-kmeans are implemented in python, biological analytics code in R.
 - scAIDE (R package):
 
 	```r
-require(devtools)
-setwd("where scAIDE folder is located")
-install("scAIDE")
-```
+	require(devtools)
+	setwd("where scAIDE folder is located")
+	install("scAIDE")
+	```
 
 ## Example Usage:
 A demo is provided in [demo](https://github.com/tinglabs/scAIDE/demo) folder, showing details of data preprocessing, embedding with AIDE and clustering with RPH-kmeans. Two datasets (`Mouse bladder` and `Mouse retina`) are also given.
