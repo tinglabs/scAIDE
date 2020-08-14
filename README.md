@@ -47,7 +47,7 @@ AIDE and RPH-kmeans are implemented in python, biological analytics code in R.
 	```
 
 ## Example Usage:
-A demo is provided in [demo](https://github.com/tinglabs/scAIDE/demo) folder, showing details of data preprocessing, embedding with AIDE and clustering with RPH-kmeans. Two datasets (`Mouse bladder` and `Mouse retina`) are also given.
+A demo is provided in [demo](https://github.com/tinglabs/scAIDE/tree/master/demo) folder, showing details of data preprocessing, embedding with AIDE and clustering with RPH-kmeans. Two datasets (`Mouse bladder` and `Mouse retina`) are also given.
 
 ### - Preprocessing
 A pre-processed single-cell data is accepted, provided that it is normalized and log-transformed (for optimal performance). 

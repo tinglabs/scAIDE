@@ -30,6 +30,7 @@ KMeans (init = k-means++, n_init = 10): ARI = 0.5821 (0.0302), NMI = 0.7648 (0.0
 ```
 
 Here shows the history loss of AIDE:
+
 ![history loss](aide_for_retina/loss.png)
 
 ## For large data (e.g. cell_num > 100000)
@@ -58,4 +59,5 @@ KMeans (init = k-means++, n_init = 10): ARI = 0.6659 (0.1138), NMI = 0.7895 (0.0
 ```
 
 Here shows the history loss of AIDE:
+
 ![history loss](aide_for_retina/loss.png)
