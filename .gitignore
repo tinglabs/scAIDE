@@ -4,7 +4,8 @@
 baseline/project
 baseline/result.zip
 sc_cluster/result
-demo/data
+demo/data/mouse_bladder_cell.h5
+demo/data/Shekhar_mouse_retina.h5
 rsyncToServer.sh
 exclude.txt
 
