@@ -6,11 +6,11 @@
 #SBATCH -t 72:00:00
 
 AIDE_PATH='/home/yhuang/LSH/project/aide'
-RP_KMEANS_PATH='/home/yhuang/LSH/project/rp_kmeans'
-SC_CLUSTER_PATH='/home/yhuang/LSH/project/sc_cluster/src'
+RPH_KMEANS_PATH='/home/yhuang/LSH/project/rph_kmeans'
+SC_CLUSTER_PATH='/home/yhuang/LSH/scAIDE/sc_cluster/src'
 
 export PYTHONPATH=${AIDE_PATH}:$PYTHONPATH
-export PYTHONPATH=${RP_KMEANS_PATH}:$PYTHONPATH
+export PYTHONPATH=${RPH_KMEANS_PATH}:$PYTHONPATH
 
 echo 'PYTHONPATH:' ${PYTHONPATH}
 cd $SC_CLUSTER_PATH

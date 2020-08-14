@@ -4,10 +4,12 @@
 """
 
 import itertools
-import time
 import os
+import numpy as np
+import scipy.sparse as sp
+from tqdm import tqdm
 
-from aide.utils_ import get_load_func, get_save_func
+from aide.utils_ import get_load_func, get_save_func, timer
 
 
 def load_save(attrPath, file_format):
@@ -60,6 +62,30 @@ def unzip_dict(d):
 	for v_list in itertools.product(*v_lists):
 		ret_list.append({k: v for k, v in zip(k_list, v_list)})
 	return ret_list
+
+
+@timer
+def select_genes_with_dispersion(X, gene_keep=1000, eps=1e-6, step=1000):
+	if sp.issparse(X):
+		if not sp.isspmatrix_csc(X):
+			X = X.tocsc()
+		mean_ary = np.hstack([X[:, i:i+step].mean(axis=0).A1 for i in tqdm(range(0, X.shape[1], step))])
+		var_ary = np.hstack([X[:, i:i+step].A.var(axis=0) for i in tqdm(range(0, X.shape[1], step))])
+		disp = var_ary / mean_ary  # (n_features,)
+		assert np.isnan(disp).sum() == 0 and np.isinf(disp).sum() == 0
+		assert mean_ary.shape[0] == X.shape[1] and var_ary.shape[0] == X.shape[1]
+		col_idx_ary = np.argsort(disp)[-gene_keep:]
+		X = X[:, col_idx_ary]
+		return X.tocsr()
+	else:
+		var_ary = np.var(X+eps, axis=0) # (n_features,)
+		mean_ary = np.mean(X+eps, axis=0)   # (n_features,)
+		disp = var_ary / mean_ary   # (n_features,)
+		assert np.isnan(disp).sum() == 0 and np.isinf(disp).sum() == 0
+		assert mean_ary.shape[0] == X.shape[1] and var_ary.shape[0] == X.shape[1]
+		col_idx_ary = np.argsort(disp)[-gene_keep:]
+		X = X[:, col_idx_ary]
+		return X
 
 
 if __name__ == '__main__':

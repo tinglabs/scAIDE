@@ -6,7 +6,7 @@
 import os
 # To precisely count the clustering CPU time, activate the following 3 lines when running clustering. And remember to
 # deactivate them when running dimension reduction. It's amazing that limiting the threads number using the
-# following 3 lines can accelerate kmeans(init with kmeans++) and rp-kmeans dramatically on linux OS (24 cores).
+# following 3 lines can accelerate kmeans(init with kmeans++) and rph-kmeans dramatically on linux OS (24 cores).
 # It's probably because 'numpy' takes too much CPU time in creating and destroying new threads and transfering
 # the data between threads when performing matrix calculation on a multi-core machine. The acceleration will be
 # more significant when matrix.shape[1] is small.
@@ -27,7 +27,9 @@ import numpy as np
 from sklearn.manifold import TSNE, MDS
 from sklearn.decomposition import PCA
 from sklearn.metrics import adjusted_rand_score, normalized_mutual_info_score
-from sklearn.cluster import KMeans
+from sklearn.metrics.pairwise import paired_distances
+from sklearn.cluster import KMeans, AgglomerativeClustering, SpectralClustering, DBSCAN
+from sklearn.mixture import GaussianMixture
 from multiprocessing import Pool
 import warnings
 warnings.filterwarnings("ignore")
@@ -37,11 +39,12 @@ from data_explain import AryDataExplainer
 from aide.aide_ import AIDE, AIDEConfig
 from aide.deep_mds import DeepMDS, DeepMDSConfig
 from aide.ae import AE, AEConfig
-from rp_kmeans import RPKMeans, select_k_with_bic
+from rph_kmeans import RPHKMeans, select_k_with_bic
 from constant import RESULT_PATH, DATA_PATH, MODEL_PATH, TEMP_PATH, EMBEDDING_PATH
 from aide.constant import DATA_MAT, DATA_TFRECORD
 from utils_draw import simple_dot_plot, simple_dist_plot
-from utils_ import unzip_dict
+from utils_ import unzip_dict, select_genes_with_dispersion
+from dim_origin_clt_eval import PhenographCluster
 
 
 class DimReduceCltEvaluator(object):
@@ -87,9 +90,9 @@ class DimReduceCltEvaluator(object):
 		return self.DRAW_FOLDER + os.sep + '{}-{}'.format('RAW', data_name)
 
 
-	def get_rp_kmeans_clt_name(self, max_point=2000, w=None, proj_num=5, n_init=1, bkt_improve=None,
+	def get_rph_kmeans_clt_name(self, max_point=2000, w=None, proj_num=5, n_init=1, bkt_improve=None,
 			radius_divide=None, bkt_size_keepr=1.0, center_dist_keepr=1.0, **kwargs):
-		return 'RPKMeans_mp{}_w{}_pj{}_ninit{}_bkt{}_{}_{}_{}_{}'.format(
+		return 'RPHKMeans_mp{}_w{}_pj{}_ninit{}_bkt{}_{}_{}_{}_{}'.format(
 				max_point, w, proj_num, n_init, bkt_improve, radius_divide, bkt_size_keepr, center_dist_keepr, kwargs)
 
 
@@ -121,7 +124,7 @@ class DimReduceCltEvaluator(object):
 		return MDS(n_components=dim).fit_transform(X)
 
 
-	def get_dime_embedding(self, X, config, encoder_name, save_folder):
+	def get_aide_embedding(self, X, config, encoder_name, save_folder):
 		encoder = AIDE(encoder_name, save_folder)
 		embedding = encoder.fit_transform(X, config=config, from_last=False)
 		return embedding
@@ -265,7 +268,7 @@ class DimReduceCltEvaluator(object):
 	def combine_result(self, encoder_name, clt_mark, embed_repeat=5):
 		"""
 		Args:
-			clt_mark (str): e.g. 'rp-kmeans' | 'kmeans (k-means++)' | 'kmeans (random)' | 'rp-kmeans (default)' | rp-kmeans (best)'
+			clt_mark (str): e.g. 'rph-kmeans' | 'kmeans (k-means++)' | 'kmeans (random)' | 'rph-kmeans (default)' | rph-kmeans (best)'
 		"""
 		save_folder = os.path.join(self.METRIC_FOLDER, encoder_name, clt_mark)
 		results = [json.load(open(save_folder + os.sep + 'embedding-{}.json'.format(i))) for i in range(embed_repeat)]
@@ -288,9 +291,18 @@ class DimReduceCltEvaluator(object):
 			columns=['EMBEDDING_CPU_TIME', 'EMBEDDING_REAL_TIME'])
 
 
-	def prepare_x(self, data_name, data_type):
+	def prepare_x(self, data_name, data_type, gene_select=False, gene_keep=1000):
+		"""
+		Args:
+			gene_select (bool)
+			gene_keep (int): used when gene_select == True
+		"""
 		X = get_process_features(data_name, data_type)
 		info_dict = get_process_data_info(data_name, data_type)
+		if gene_select:
+			assert data_type == DATA_MAT
+			X = select_genes_with_dispersion(X, gene_keep)
+			info_dict['n_features'] = gene_select
 		if data_type == DATA_MAT:
 			if sp.issparse(X) and info_dict['FEATURE_NON_ZERO_RATIO'] > 0.2 and info_dict['CELL_NUM'] < 5000:
 				X = X.toarray()
@@ -302,7 +314,8 @@ class DimReduceCltEvaluator(object):
 
 
 	# running ================================================================
-	def run_all_embedding(self, data_name, encoder_name, embed_method, embed_repeat=5, data_type=DATA_MAT, config=None, save_embedding=True, **kwargs):
+	def run_all_embedding(self, data_name, encoder_name, embed_method, embed_repeat=5,
+			data_type=DATA_MAT, config=None, save_embedding=True, **kwargs):
 		"""
 		Args:
 			embed_method (str): 'PCA' | 'MDS' | 'AIDE' | 'DeepMDS'
@@ -315,6 +328,11 @@ class DimReduceCltEvaluator(object):
 		print('Run embedding: {}'.format(encoder_name))
 		X = self.prepare_x(data_name, data_type)
 
+		# Gene Selection
+		# gene_keep = 1000
+		# X = self.prepare_x(data_name, data_type, gene_select=True, gene_keep=gene_keep)
+		# print(f'Experiments of Gene Selection: {gene_keep} genes; {X.shape} shape')
+
 		for embed_repeat_id in range(embed_repeat):
 			cpu_t, real_t = process_time(), time()
 			if embed_method == 'PCA':
@@ -326,7 +344,7 @@ class DimReduceCltEvaluator(object):
 			elif embed_method == 'AIDE':
 				model_save_folder = self.get_encoder_save_folder(encoder_name)
 				c = deepcopy(config) if config else AIDEConfig()
-				embedding = self.get_dime_embedding(X, c, encoder_name, model_save_folder)
+				embedding = self.get_aide_embedding(X, c, encoder_name, model_save_folder)
 			elif embed_method == 'DeepMDS':
 				model_save_folder = self.get_encoder_save_folder(encoder_name)
 				c = deepcopy(config) if config else DeepMDSConfig()
@@ -389,7 +407,7 @@ class DimReduceCltEvaluator(object):
 				'pca_embedding', embedding, y_true, sample_ranks=sample_ranks)
 
 
-	def run_clt_base(self, clt_name_to_clt_args, embedding, y_true, clt_repeat, clt_name_to_eval_kwargs=None):
+	def run_clt_base(self, clt_name_to_clt_args, embedding, y_true, clt_repeat, clt_name_to_eval_kwargs=None, n_jobs=10):
 		"""
 		Args:
 			clt_name_to_clt_args (dict): {clt_name: (clt_initializer, clt_kwargs)}
@@ -402,7 +420,7 @@ class DimReduceCltEvaluator(object):
 		for clt_name, (clt_initializer, clt_kwargs) in clt_name_to_clt_args.items():
 			eval_kwargs = clt_name_to_eval_kwargs.get(clt_name, {})
 			# multiprocess
-			with Pool(10) as pool:
+			with Pool(n_jobs) as pool:
 				dlist = pool.map(self.get_predict_performance,
 					[(embedding, y_true, clt_initializer, clt_kwargs, eval_kwargs) for i in range(clt_repeat)])
 			# # single process
@@ -424,7 +442,8 @@ class DimReduceCltEvaluator(object):
 
 		for init_type in ['k-means++', 'random']:
 			clt_name_to_clt_args, clt_name_to_eval_kwargs = {}, {}
-			n_init_list = [1, 3, 5, 8, 10, 15, 20, 25, 30, 50, 70, 100]
+			# n_init_list = [1, 3, 5, 8, 10, 15, 20, 25, 30, 50, 70, 100]
+			n_init_list = [10]
 			for n_init in n_init_list:
 				clt_name = 'kmeans ({}; {})'.format(init_type, n_init)
 				clt_initializer, clt_kwargs = KMeans, {'n_clusters': n_clusters, 'init': init_type, 'n_init': n_init}
@@ -439,7 +458,134 @@ class DimReduceCltEvaluator(object):
 			json.dump(ret_dict, open(save_json, 'w'), indent=2)
 
 
-	def run_rp_kmeans_clt(self, data_name, encoder_name, embed_repeat_id, clt_repeat=10, draw=False):
+	def run_gaussian_clt(self, data_name, encoder_name, embed_repeat_id, clt_repeat=10, draw=False):
+		embed_path = self.get_embedding_path(encoder_name, embed_repeat_id)
+		print('loading ', embed_path)
+		embedding = np.load(embed_path)
+		y_true = get_process_labels(data_name)
+		n_clusters = len(np.unique(y_true))
+		print('data_size={}, n_clusters={}'.format(embedding.shape, n_clusters))
+
+		for covariance_type in ['full']: # 'tied', 'diag', 'spherical'
+			clt_name_to_clt_args, clt_name_to_eval_kwargs = {}, {}
+			n_init_list = [1, 10]
+			for n_init in n_init_list:
+				clt_name = 'Gaussian ({}; {})'.format(covariance_type, n_init)
+				clt_initializer, clt_kwargs = GaussianMixture, {'n_components': n_clusters, 'covariance_type': covariance_type, 'n_init': n_init}
+				clt_name_to_clt_args[clt_name] = (clt_initializer, clt_kwargs)
+				clt_name_to_eval_kwargs[clt_name] = {'FIG_FOLDER':os.path.join(self.get_fig_save_folder(encoder_name, f'{clt_name}-{embed_repeat_id}'))}
+
+			ret_dict = self.run_clt_base(clt_name_to_clt_args, embedding, y_true, clt_repeat, clt_name_to_eval_kwargs if draw else {})
+
+			save_json = os.path.join(self.METRIC_FOLDER, encoder_name,
+				'Gaussian ({})'.format(covariance_type), 'embedding-{}.json'.format(embed_repeat_id))
+			os.makedirs(os.path.dirname(save_json), exist_ok=True)
+			json.dump(ret_dict, open(save_json, 'w'), indent=2)
+
+
+	def run_agg_clt(self, data_name, encoder_name, embed_repeat_id, clt_repeat=10, draw=False, n_jobs=1):
+		embed_path = self.get_embedding_path(encoder_name, embed_repeat_id)
+		print('loading ', embed_path)
+		embedding = np.load(embed_path)
+		y_true = get_process_labels(data_name)
+		n_clusters = len(np.unique(y_true))
+		print('data_size={}, n_clusters={}'.format(embedding.shape, n_clusters))
+
+		for linkage in ['ward', 'complete', 'average', 'single']:
+			clt_name_to_clt_args, clt_name_to_eval_kwargs = {}, {}
+			clt_name = 'Agglomerative ({})'.format(linkage)
+			clt_initializer, clt_kwargs = AgglomerativeClustering, {'n_clusters':n_clusters, 'linkage': linkage}
+			clt_name_to_clt_args[clt_name] = (clt_initializer, clt_kwargs)
+			clt_name_to_eval_kwargs[clt_name] = {'FIG_FOLDER':os.path.join(self.get_fig_save_folder(encoder_name, f'{clt_name}-{embed_repeat_id}'))}
+
+			ret_dict = self.run_clt_base(clt_name_to_clt_args, embedding, y_true, clt_repeat, clt_name_to_eval_kwargs if draw else {}, n_jobs=n_jobs)
+
+			save_json = os.path.join(self.METRIC_FOLDER, encoder_name,
+				'Agglomerative ({})'.format(linkage), 'embedding-{}.json'.format(embed_repeat_id))
+			os.makedirs(os.path.dirname(save_json), exist_ok=True)
+			json.dump(ret_dict, open(save_json, 'w'), indent=2)
+
+
+	def run_spe_clt(self, data_name, encoder_name, embed_repeat_id, clt_repeat=10, draw=False, n_jobs=3):
+		embed_path = self.get_embedding_path(encoder_name, embed_repeat_id)
+		print('loading ', embed_path)
+		embedding = np.load(embed_path)
+		y_true = get_process_labels(data_name)
+		n_clusters = len(np.unique(y_true))
+		print('data_size={}, n_clusters={}'.format(embedding.shape, n_clusters))
+
+		clt_name_to_clt_args, clt_name_to_eval_kwargs = {}, {}
+		clt_name = 'Spectral'
+		clt_initializer, clt_kwargs = SpectralClustering, {'n_clusters':n_clusters}
+		clt_name_to_clt_args[clt_name] = (clt_initializer, clt_kwargs)
+		clt_name_to_eval_kwargs[clt_name] = {'FIG_FOLDER':os.path.join(self.get_fig_save_folder(encoder_name, f'{clt_name}-{embed_repeat_id}'))}
+
+		ret_dict = self.run_clt_base(clt_name_to_clt_args, embedding, y_true, clt_repeat, clt_name_to_eval_kwargs if draw else {}, n_jobs=n_jobs)
+
+		save_json = os.path.join(self.METRIC_FOLDER, encoder_name, 'Spectral', 'embedding-{}.json'.format(embed_repeat_id))
+		os.makedirs(os.path.dirname(save_json), exist_ok=True)
+		json.dump(ret_dict, open(save_json, 'w'), indent=2)
+
+
+	def run_dbscan_clt(self, data_name, encoder_name, embed_repeat_id, clt_repeat=10, draw=False, sample_dist_num=1000):
+		def get_sample_dist(X):
+			return paired_distances(
+				X[np.random.choice(X.shape[0], sample_dist_num)],
+				X[np.random.choice(X.shape[0], sample_dist_num)],
+				'euclidean'
+			)
+		def get_eps(X, ratio=0.5):
+			sample_dist = get_sample_dist(X)
+			return np.median(sample_dist) * ratio
+
+		embed_path = self.get_embedding_path(encoder_name, embed_repeat_id)
+		print('loading ', embed_path)
+		embedding = np.load(embed_path)
+		y_true = get_process_labels(data_name)
+		n_clusters = len(np.unique(y_true))
+		print('data_size={}, n_clusters={}'.format(embedding.shape, n_clusters))
+
+		clt_name_to_clt_args, clt_name_to_eval_kwargs = {}, {}
+		for ratio, min_samples in itertools.product([0.1, 0.3, 0.4, 0.45, 0.5, 0.55, 0.6, 0.7, 1.0, 2.0], [3, 5, 10]):
+			clt_name = 'DBSCAN ({}; {})'.format(ratio, min_samples)
+			eps = get_eps(embedding, ratio=ratio)
+			clt_initializer, clt_kwargs = DBSCAN, {'eps':eps, 'min_samples': min_samples}
+			clt_name_to_clt_args[clt_name] = (clt_initializer, clt_kwargs)
+			clt_name_to_eval_kwargs[clt_name] = {
+				'FIG_FOLDER':os.path.join(self.get_fig_save_folder(encoder_name, f'{clt_name}-{embed_repeat_id}'))}
+
+		ret_dict = self.run_clt_base(clt_name_to_clt_args, embedding, y_true, clt_repeat, clt_name_to_eval_kwargs if draw else {})
+
+		save_json = os.path.join(self.METRIC_FOLDER, encoder_name, 'DBSCAN', 'embedding-{}.json'.format(embed_repeat_id))
+		os.makedirs(os.path.dirname(save_json), exist_ok=True)
+		json.dump(ret_dict, open(save_json, 'w'), indent=2)
+
+
+	def run_phenograph_clt(self, data_name, encoder_name, embed_repeat_id, clt_repeat=10, draw=False):
+		embed_path = self.get_embedding_path(encoder_name, embed_repeat_id)
+		print('loading ', embed_path)
+		embedding = np.load(embed_path)
+		y_true = get_process_labels(data_name)
+		n_clusters = len(np.unique(y_true))
+		print('data_size={}, n_clusters={}'.format(embedding.shape, n_clusters))
+
+		clt_name_to_clt_args, clt_name_to_eval_kwargs = {}, {}
+		clt_name = 'Phenograph'
+		clt_initializer, clt_kwargs = PhenographCluster, {'n_jobs': 1}
+		clt_name_to_clt_args[clt_name] = (clt_initializer, clt_kwargs)
+		clt_name_to_eval_kwargs[clt_name] = {
+			'FIG_FOLDER':os.path.join(self.get_fig_save_folder(encoder_name, f'{clt_name}-{embed_repeat_id}'))}
+
+		ret_dict = self.run_clt_base(clt_name_to_clt_args, embedding, y_true, clt_repeat,
+			clt_name_to_eval_kwargs if draw else {})
+
+		save_json = os.path.join(self.METRIC_FOLDER, encoder_name,
+			'Phenograph', 'embedding-{}.json'.format(embed_repeat_id))
+		os.makedirs(os.path.dirname(save_json), exist_ok=True)
+		json.dump(ret_dict, open(save_json, 'w'), indent=2)
+
+
+	def run_rph_kmeans_clt(self, data_name, encoder_name, embed_repeat_id, clt_repeat=10, draw=False):
 		embedding = np.load(self.get_embedding_path(encoder_name, embed_repeat_id))
 		y_true = get_process_labels(data_name)
 		n_clusters = len(np.unique(y_true))
@@ -448,9 +594,9 @@ class DimReduceCltEvaluator(object):
 		clt_name_to_clt_args, clt_name_to_eval_kwargs = {}, {}
 		for max_point, w, proj_num, n_init, bkt_improve, radius_divide, bkt_size_keepr, center_dist_keepr in itertools.product(
 				[2000], [None], [5], [1], [None], [None], [1.0], [1.0]):
-			clt_name = self.get_rp_kmeans_clt_name(max_point, w, proj_num, n_init,
+			clt_name = self.get_rph_kmeans_clt_name(max_point, w, proj_num, n_init,
 				bkt_improve, radius_divide, bkt_size_keepr, center_dist_keepr)
-			clt_initializer = RPKMeans
+			clt_initializer = RPHKMeans
 			clt_kwargs = {'n_clusters':n_clusters, 'max_point':max_point, 'w': w, 'proj_num': proj_num, 'n_init': n_init,
 				'bkt_improve': bkt_improve, 'radius_divide': radius_divide, 'bkt_size_keepr': bkt_size_keepr,
 				'center_dist_keepr': center_dist_keepr}
@@ -459,7 +605,7 @@ class DimReduceCltEvaluator(object):
 
 		ret_dict = self.run_clt_base(clt_name_to_clt_args, embedding, y_true, clt_repeat, clt_name_to_eval_kwargs if draw else {})
 
-		save_json = os.path.join(self.METRIC_FOLDER, encoder_name, 'rp-kmeans', 'embedding-{}.json'.format(embed_repeat_id))
+		save_json = os.path.join(self.METRIC_FOLDER, encoder_name, 'rph-kmeans', 'embedding-{}.json'.format(embed_repeat_id))
 		os.makedirs(os.path.dirname(save_json), exist_ok=True)
 		json.dump(ret_dict, open(save_json, 'w'), indent=2)
 
@@ -470,12 +616,12 @@ class DimReduceCltEvaluator(object):
 			run_clt_func(data_name, encoder_name, embed_repeat_id, clt_repeat, draw)
 
 
-	def run_rp_kmeans_with_dict(self, data_name, encoder_name, clt_kwargs_list=None,
-			clt_mark='rp-kmeans', embed_repeat=5, clt_repeat=10, draw=False):
+	def run_rph_kmeans_with_dict(self, data_name, encoder_name, clt_kwargs_list=None,
+			clt_mark='rph-kmeans', embed_repeat=5, clt_repeat=10, draw=False):
 		y_true = get_process_labels(data_name)
 		n_clusters = len(np.unique(y_true))
 
-		clt_initializer = RPKMeans
+		clt_initializer = RPHKMeans
 		clt_kwargs_list = clt_kwargs_list or [{}]
 
 		results = []
@@ -491,7 +637,7 @@ class DimReduceCltEvaluator(object):
 			for clt_kwargs in clt_kwargs_list:
 				if 'n_clusters' not in clt_kwargs:
 					clt_kwargs['n_clusters'] = n_clusters
-				clt_name = self.get_rp_kmeans_clt_name(**clt_kwargs)
+				clt_name = self.get_rph_kmeans_clt_name(**clt_kwargs)
 				clt_name_to_clt_args[clt_name] = (clt_initializer, clt_kwargs)
 				clt_name_to_eval_kwargs[clt_name] = {'FIG_FOLDER':os.path.join(self.get_fig_save_folder(encoder_name, f'{clt_name}-{embed_repeat_id}'))}
 
@@ -565,376 +711,481 @@ if __name__ == '__main__':
 	embed_repeat = 5
 	clt_repeat = 10
 
-	# Evaluate all raw data =========================================================
-	data_names = ['10X_PBMC', 'mouse_bladder_cell', 'mouse_ES_cell', 'worm_neuron_cell', 'Shekhar_mouse_retina', 'PBMC_68k', 'sc_brain']
-	for data_name in data_names:
-		print(data_name)
-		evaluator.eval_raw(data_name)
-
-	# monitor memory:  mprof run --python -C python dim_reduce_clt_eval.py && mprof plot -o mem.png
-	print('PCA/MDS Embedding =========================================================')
-	data_names = ['10X_PBMC', 'mouse_bladder_cell', 'mouse_ES_cell', 'worm_neuron_cell', 'Shekhar_mouse_retina', 'PBMC_68k', 'sc_brain']
-	embed_methods = ['PCA']
-	reduced_dim = 256
-	for embed_method, data_name in itertools.product(embed_methods, data_names):
-		encoder_name = get_encoder_name(embed_method, data_name, reduced_dim)
-		evaluator.run_all_embedding(
-			data_name, encoder_name, embed_method, embed_repeat=embed_repeat, data_type=DATA_MAT, dim=reduced_dim)
-		evaluator.eval_embedding(data_name, encoder_name, embed_repeat=embed_repeat)
-
-
-	print('PCA/MDS + KMeans ------------------------')
-	data_names = ['10X_PBMC', 'mouse_bladder_cell', 'mouse_ES_cell', 'worm_neuron_cell', 'Shekhar_mouse_retina', 'PBMC_68k', 'sc_brain']
-	embed_methods = ['PCA']
-	reduced_dim = 256
-	for embed_method, data_name in itertools.product(embed_methods, data_names):
-		encoder_name = get_encoder_name(embed_method, data_name, reduced_dim)
-		evaluator.run_all_embedding_clt(
-			evaluator.run_kmeans_clt, data_name, encoder_name,
-			embed_repeat=embed_repeat, clt_repeat=clt_repeat)
-		evaluator.combine_result(encoder_name, 'kmeans ({})'.format('random'), embed_repeat=embed_repeat)
-		evaluator.combine_result(encoder_name, 'kmeans ({})'.format('k-means++'), embed_repeat=embed_repeat)
+	# # Evaluate all raw data =========================================================
+	# data_names = ['10X_PBMC', 'mouse_bladder_cell', 'mouse_ES_cell', 'worm_neuron_cell', 'Shekhar_mouse_retina', 'PBMC_68k', 'sc_brain']
+	# for data_name in data_names:
+	# 	print(data_name)
+	# 	evaluator.eval_raw(data_name)
+	#
+	# # monitor memory:  mprof run --python -C python dim_reduce_clt_eval.py && mprof plot -o mem.png
+	# print('PCA/MDS Embedding =========================================================')
+	# data_names = ['10X_PBMC', 'mouse_bladder_cell', 'mouse_ES_cell', 'worm_neuron_cell', 'Shekhar_mouse_retina', 'PBMC_68k', 'sc_brain']
+	# # data_names = ['Shekhar_mouse_retina_IMB', 'mouse_bladder_cell_IMB', 'mouse_ES_cell_IMB']
+	# # embed_methods, reduced_dim, mark = ['PCA'], 256, ''
+	# embed_methods, reduced_dim, mark = ['PCA'], 256, 'gene_1000'
+	# for embed_method, data_name in itertools.product(embed_methods, data_names):
+	# 	encoder_name = get_encoder_name(embed_method, data_name, reduced_dim, mark=mark)
+	# 	evaluator.run_all_embedding(
+	# 		data_name, encoder_name, embed_method, embed_repeat=embed_repeat, data_type=DATA_MAT, dim=reduced_dim)
+	# 	evaluator.eval_embedding(data_name, encoder_name, embed_repeat=embed_repeat)
 
 
-	print('PCA + RPKMeans (best) ------------------------')
-	PCA_RP_KMEANS_CONFIG_DICT = {
-		'sc_brain':{
-			'proj_num': 7,
-		},
-		'PBMC_68k':{
-			'max_point': 4000,
-			'w': 5.5,
-			'proj_num': 6,
-		},
-		'Shekhar_mouse_retina':{
-			'bkt_improve': 'radius',
-			'radius_divide': 13.5,
-			'w': 14.0,
-		},
-		'10X_PBMC':{
-			'bkt_improve': 'radius',
-			'radius_divide': 13.0,
-		},
-		'mouse_bladder_cell':{
-			'max_point': 500,
-			'bkt_improve': 'min_bkt_size',
-			'bkt_size_keepr': 0.8,
-		},
-		'mouse_ES_cell':{
-			'bkt_improve': 'radius',
-			'radius_divide':15.0,
-		},
-		'worm_neuron_cell':{
-			'bkt_improve': 'radius',
-			'radius_divide': 7.5,
-		}
-	}
-	data_names = ['10X_PBMC', 'mouse_bladder_cell', 'mouse_ES_cell', 'worm_neuron_cell', 'Shekhar_mouse_retina', 'PBMC_68k', 'sc_brain']
-	reduced_dim = 256
-	for data_name in data_names:
-		encoder_name = get_encoder_name('PCA', data_name, dim=reduced_dim)
-		clt_mark = 'rp-kmeans (best)'
-		d = PCA_RP_KMEANS_CONFIG_DICT[data_name]
-		d['verbose'] = 0; d['n_init'] = [1, 2, 3, 4, 5, 8, 10, 15, 20]
-		evaluator.run_rp_kmeans_with_dict(data_name, encoder_name,
-			clt_kwargs_list=unzip_dict(d),
-			clt_mark=clt_mark, embed_repeat=embed_repeat, clt_repeat=clt_repeat)
-		evaluator.combine_result(encoder_name, clt_mark, embed_repeat=embed_repeat)
+	# print('PCA/MDS + KMeans ------------------------')
+	# data_names = ['10X_PBMC', 'mouse_bladder_cell', 'mouse_ES_cell', 'worm_neuron_cell', 'Shekhar_mouse_retina', 'PBMC_68k', 'sc_brain']
+	# # data_names = ['Shekhar_mouse_retina_IMB', 'mouse_bladder_cell_IMB', 'mouse_ES_cell_IMB']
+	# embed_methods, reduced_dim, mark = ['PCA'], 256, ''
+	# # embed_methods, reduced_dim, mark = ['PCA'], 256, 'gene_1000'
+	# for embed_method, data_name in itertools.product(embed_methods, data_names):
+	# 	encoder_name = get_encoder_name(embed_method, data_name, reduced_dim, mark=mark)
+	# 	evaluator.run_all_embedding_clt(
+	# 		evaluator.run_kmeans_clt, data_name, encoder_name,
+	# 		embed_repeat=embed_repeat, clt_repeat=clt_repeat)
+	# 	evaluator.combine_result(encoder_name, 'kmeans ({})'.format('random'), embed_repeat=embed_repeat)
+	# 	evaluator.combine_result(encoder_name, 'kmeans ({})'.format('k-means++'), embed_repeat=embed_repeat)
 
 
-	print('AIDE (best) Embedding =========================================================')
-	AIDE_CONFIG_DICT = {
-		'sc_brain':{
-			'alpha': 40.0,
-		},
-		'PBMC_68k':{
-			'alpha': 1.0,
-			'pretrain_step_num': 2000,
-		},
-		'Shekhar_mouse_retina':{
-			'alpha': 20.0,
-			'pretrain_step_num':2000,
-		},
-		'10X_PBMC':{
-			'alpha':1.0,
-			'pretrain_step_num':2000,
-			'ae_drop_out_rate':0.2,
-		},
-		'mouse_bladder_cell':{
-			'alpha': 40.0,
-			'pretrain_step_num': 2000,
-			'early_stop_patience': None,
-		},
-		'mouse_ES_cell':{
-			'alpha': 15.0,
-		},
-		'worm_neuron_cell':{
-			'alpha': 20.0,
-			'ae_drop_out_rate': 0.5,
-		}
-	}
-	data_names = ['10X_PBMC', 'mouse_bladder_cell', 'mouse_ES_cell', 'worm_neuron_cell', 'Shekhar_mouse_retina', 'PBMC_68k', 'sc_brain']
-	for data_name in data_names:
-		encoder_name = get_encoder_name('AIDE', data_name, mark='Best')
-		config = AIDEConfig(assign_dict=AIDE_CONFIG_DICT[data_name])
-		evaluator.run_all_embedding(
-			data_name, encoder_name, 'AIDE', config=config,
-			embed_repeat=embed_repeat, data_type=DATA_MAT)
-		evaluator.eval_embedding(data_name, encoder_name, embed_repeat=embed_repeat)
+	# print('PCA/AIDE + Agg/Spe/DBSCAN/Gaussian Clustering ------------------------')
+	# # data_names = ['10X_PBMC', 'mouse_bladder_cell', 'mouse_ES_cell', 'worm_neuron_cell', 'Shekhar_mouse_retina', 'PBMC_68k', 'sc_brain']
+	# data_names = ['Shekhar_mouse_retina', 'PBMC_68k', 'sc_brain']
+	# # data_names = ['mouse_ES_cell', 'worm_neuron_cell', 'Shekhar_mouse_retina', 'PBMC_68k', 'sc_brain']
+	# # embed_methods, reduced_dim, mark = ['PCA'], 256, ''
+	# embed_methods, reduced_dim, mark = ['AIDE'], 256, 'Best'
+	# for embed_method, data_name in itertools.product(embed_methods, data_names):
+	# 	encoder_name = get_encoder_name(embed_method, data_name, reduced_dim, mark=mark)
+	#
+	# 	# Gaussian Clustering
+	# 	# evaluator.run_all_embedding_clt(
+	# 	# 	evaluator.run_gaussian_clt, data_name, encoder_name,
+	# 	# 	embed_repeat=embed_repeat, clt_repeat=clt_repeat)
+	# 	# for covariance_type in ['full']:
+	# 	# 	evaluator.combine_result(encoder_name, 'Gaussian ({})'.format(covariance_type), embed_repeat=embed_repeat)
+	#
+	# 	# Phenograph Clustering
+	# 	# evaluator.run_all_embedding_clt(
+	# 	# 	evaluator.run_phenograph_clt, data_name, encoder_name,
+	# 	# 	embed_repeat=embed_repeat, clt_repeat=clt_repeat)
+	# 	# evaluator.combine_result(encoder_name, 'Phenograph', embed_repeat=embed_repeat)
+	#
+	# 	# Agg Clustering; For PBMC_68k: n_jobs == 1 and clt_repeat == 1; For sc_brain: n_jobs == 1 and clt_repeat == 1
+	# 	# clt_repeat = 1
+	# 	# evaluator.run_all_embedding_clt(
+	# 	# 	evaluator.run_agg_clt, data_name, encoder_name,
+	# 	# 	embed_repeat=embed_repeat, clt_repeat=clt_repeat)
+	# 	# for linkage in ['ward', 'complete', 'average', 'single']:
+	# 	# 	evaluator.combine_result(encoder_name, 'Agglomerative ({})'.format(linkage), embed_repeat=embed_repeat)
+	#
+	# 	# Spectral Clustering (Running time is very long);
+	# 	# For Shekhar_mouse_retina: n_jobs == 3 and clt_repeat == 3
+	# 	# evaluator.run_all_embedding_clt(
+	# 	# 	evaluator.run_spe_clt, data_name, encoder_name,
+	# 	# 	embed_repeat=embed_repeat, clt_repeat=clt_repeat)
+	# 	# evaluator.combine_result(encoder_name, 'Spectral', embed_repeat=embed_repeat)
+	#
+	# 	# DBSCAN Clustering
+	# 	evaluator.run_all_embedding_clt(
+	# 		evaluator.run_dbscan_clt, data_name, encoder_name,
+	# 		embed_repeat=embed_repeat, clt_repeat=clt_repeat)
+	# 	evaluator.combine_result(encoder_name, 'DBSCAN', embed_repeat=embed_repeat)
 
 
-	print('AIDE (best) + KMeans ------------------------')
-	data_names = ['10X_PBMC', 'mouse_bladder_cell', 'mouse_ES_cell', 'worm_neuron_cell', 'Shekhar_mouse_retina', 'PBMC_68k', 'sc_brain']
-	for data_name in data_names:
-		encoder_name = get_encoder_name('AIDE', data_name, mark='Best')
-		evaluator.run_all_embedding_clt(
-			evaluator.run_kmeans_clt, data_name, encoder_name,
-			embed_repeat=embed_repeat, clt_repeat=clt_repeat)
-		evaluator.combine_result(encoder_name, 'kmeans ({})'.format('random'), embed_repeat=embed_repeat)
-		evaluator.combine_result(encoder_name, 'kmeans ({})'.format('k-means++'), embed_repeat=embed_repeat)
+	# print('PCA + RPHKMeans (default) ------------------------')
+	# # data_names = ['10X_PBMC', 'mouse_bladder_cell', 'mouse_ES_cell', 'worm_neuron_cell', 'Shekhar_mouse_retina', 'PBMC_68k', 'sc_brain']
+	# data_names = ['10X_PBMC']
+	# embed_method, reduced_dim, mark = 'PCA', 256, ''
+	# # embed_method, reduced_dim, mark = 'PCA', 256, 'gene_1000'
+	# for data_name in data_names:
+	# 	encoder_name = get_encoder_name(embed_method, data_name, dim=reduced_dim, mark=mark)
+	# 	clt_mark = 'rph-kmeans (default)'
+	# 	d = {
+	# 		'verbose': 0,
+	# 		# 'n_init': [1, 2, 3, 4, 5, 8, 10, 15, 20, 25, 30, 50, 70, 100],
+	# 		'n_init':[10],
+	# 		# 'max_point': 1500,
+	# 	}
+	# 	evaluator.run_rph_kmeans_with_dict(data_name, encoder_name,
+	# 		clt_kwargs_list=unzip_dict(d),
+	# 		clt_mark=clt_mark, embed_repeat=embed_repeat, clt_repeat=clt_repeat)
+	# 	evaluator.combine_result(encoder_name, clt_mark, embed_repeat=embed_repeat)
 
 
-	print('AIDE (best) + RPKMeans (best) ------------------------')
-	AIDE_RP_KMEANS_CONFIG_DICT = {
-		'sc_brain':{},
-		'PBMC_68k':{
-			'max_point': 6000,
-		},
-		'Shekhar_mouse_retina':{
-			'proj_num': 15,
-		},
-		'10X_PBMC':{
-			'bkt_improve':'min_bkt_size',
-			'bkt_size_keepr': 0.5,
-		},
-		'mouse_bladder_cell':{
-			'w': 0.5,
-			'proj_num': 10,
-		},
-		'mouse_ES_cell':{},
-		'worm_neuron_cell':{
-			'bkt_improve':'min_bkt_size',
-			'bkt_size_keepr':0.5,
-		}
-	}
-	data_names = ['10X_PBMC', 'mouse_bladder_cell', 'mouse_ES_cell', 'worm_neuron_cell', 'Shekhar_mouse_retina', 'PBMC_68k', 'sc_brain']
-	for data_name in data_names:
-		encoder_name = get_encoder_name('AIDE', data_name, mark='Best')
-		clt_mark = 'rp-kmeans (best)'
-		d = AIDE_RP_KMEANS_CONFIG_DICT[data_name]
-		d['verbose'] = 0; d['n_init'] = [1, 2, 3, 4, 5, 8, 10, 15, 20]
-		evaluator.run_rp_kmeans_with_dict(data_name, encoder_name,
-			clt_kwargs_list=unzip_dict(d),
-			clt_mark=clt_mark, embed_repeat=embed_repeat, clt_repeat=clt_repeat)
-		evaluator.combine_result(encoder_name, clt_mark, embed_repeat=embed_repeat)
+	# print('PCA + RPHKMeans (best) ------------------------')
+	# PCA_RP_KMEANS_CONFIG_DICT = {
+	# 	'sc_brain':{
+	# 		'proj_num': 7,
+	# 	},
+	# 	'PBMC_68k':{
+	# 		'max_point': 4000,
+	# 		'w': 5.5,
+	# 		'proj_num': 6,
+	# 	},
+	# 	'Shekhar_mouse_retina':{
+	# 		'bkt_improve': 'radius',
+	# 		'radius_divide': 13.5,
+	# 		'w': 14.0,
+	# 	},
+	# 	'10X_PBMC':{
+	# 		'bkt_improve': 'radius',
+	# 		'radius_divide': 13.0,
+	# 	},
+	# 	'mouse_bladder_cell':{
+	# 		'max_point': 500,
+	# 		'bkt_improve': 'min_bkt_size',
+	# 		'bkt_size_keepr': 0.8,
+	# 	},
+	# 	'mouse_ES_cell':{
+	# 		'bkt_improve': 'radius',
+	# 		'radius_divide':15.0,
+	# 	},
+	# 	'worm_neuron_cell':{
+	# 		'bkt_improve': 'radius',
+	# 		'radius_divide': 7.5,
+	# 	}
+	# }
+	# data_names = ['10X_PBMC', 'mouse_bladder_cell', 'mouse_ES_cell', 'worm_neuron_cell', 'Shekhar_mouse_retina', 'PBMC_68k', 'sc_brain']
+	# reduced_dim = 256
+	# for data_name in data_names:
+	# 	encoder_name = get_encoder_name('PCA', data_name, dim=reduced_dim)
+	# 	clt_mark = 'rph-kmeans (best)'
+	# 	d = PCA_RP_KMEANS_CONFIG_DICT[data_name]
+	# 	d['verbose'] = 0; d['n_init'] = [1, 2, 3, 4, 5, 8, 10, 15, 20]
+	# 	evaluator.run_rph_kmeans_with_dict(data_name, encoder_name,
+	# 		clt_kwargs_list=unzip_dict(d),
+	# 		clt_mark=clt_mark, embed_repeat=embed_repeat, clt_repeat=clt_repeat)
+	# 	evaluator.combine_result(encoder_name, clt_mark, embed_repeat=embed_repeat)
 
 
-	print('AIDE (best) Sparsity Simulation Embedding =========================================================')
-	os.environ["CUDA_VISIBLE_DEVICES"] = "1"
-	AIDE_SIM_SPARSITY_CONFIG_DICT = {
-		'early_stop_patience': None,
-		'max_step_num': 40000,
-	}
-	data_names = get_all_sim_dropout_data_names([60, 70, 75, 80, 85, 90, 93])
-	for data_name in data_names:
-		encoder_name = get_encoder_name('AIDE', data_name, mark='Default-40000')
-		config = AIDEConfig(assign_dict=AIDE_SIM_SPARSITY_CONFIG_DICT)
-		evaluator.run_all_embedding(
-			data_name, encoder_name, 'AIDE', config=config,
-			embed_repeat=embed_repeat, data_type=DATA_MAT)
-		evaluator.eval_embedding(data_name, encoder_name, embed_repeat=embed_repeat)
+	# print('AIDE (best) Embedding =========================================================')
+	# AIDE_CONFIG_DICT = {
+	# 	'sc_brain':{
+	# 		'alpha': 40.0,
+	# 	},
+	# 	'PBMC_68k':{
+	# 		'alpha': 1.0,
+	# 		'pretrain_step_num': 2000,
+	# 	},
+	# 	'Shekhar_mouse_retina':{
+	# 		'alpha': 20.0,
+	# 		'pretrain_step_num':2000,
+	# 	},
+	# 	'10X_PBMC':{
+	# 		'alpha':1.0,
+	# 		'pretrain_step_num':2000,
+	# 		'ae_drop_out_rate':0.2,
+	# 	},
+	# 	'mouse_bladder_cell':{
+	# 		'alpha': 40.0,
+	# 		'pretrain_step_num': 2000,
+	# 		'early_stop_patience': None,
+	# 	},
+	# 	'mouse_ES_cell':{
+	# 		'alpha': 15.0,
+	# 	},
+	# 	'worm_neuron_cell':{
+	# 		'alpha': 20.0,
+	# 		'ae_drop_out_rate': 0.5,
+	# 	}
+	# }
+	# data_names = ['10X_PBMC', 'mouse_bladder_cell', 'mouse_ES_cell', 'worm_neuron_cell', 'Shekhar_mouse_retina', 'PBMC_68k', 'sc_brain']
+	# # embed_method, reduced_dim, mark = 'AIDE', 256, 'Best'
+	# embed_method, reduced_dim, mark = 'AIDE', 256, 'Best_gene_1000'
+	# for data_name in data_names:
+	# 	encoder_name = get_encoder_name(embed_method, data_name, mark=mark)
+	# 	config = AIDEConfig(assign_dict=AIDE_CONFIG_DICT[data_name])
+	# 	evaluator.run_all_embedding(
+	# 		data_name, encoder_name, embed_method, config=config,
+	# 		embed_repeat=embed_repeat, data_type=DATA_MAT)
+	# 	evaluator.eval_embedding(data_name, encoder_name, embed_repeat=embed_repeat)
 
 
-	print('AIDE (default) Embedding =========================================================')
-	data_names = ['10X_PBMC', 'mouse_bladder_cell', 'mouse_ES_cell', 'worm_neuron_cell', 'Shekhar_mouse_retina', 'PBMC_68k', 'sc_brain']
-	for data_name in data_names:
-		encoder_name = get_encoder_name('AIDE', data_name, mark='Default')
-		config = AIDEConfig()
-		evaluator.run_all_embedding(
-			data_name, encoder_name, 'AIDE', embed_repeat=embed_repeat, data_type=DATA_MAT, config=config)
-		evaluator.eval_embedding(data_name, encoder_name, embed_repeat=embed_repeat)
+	# print('AIDE (best) + KMeans ------------------------')
+	# data_names = ['10X_PBMC', 'mouse_bladder_cell', 'mouse_ES_cell', 'worm_neuron_cell', 'Shekhar_mouse_retina', 'PBMC_68k', 'sc_brain']
+	# embed_method, reduced_dim, mark = 'AIDE', 256, 'Best_gene_1000'
+	# for data_name in data_names:
+	# 	encoder_name = get_encoder_name(embed_method, data_name, mark=mark)
+	# 	evaluator.run_all_embedding_clt(
+	# 		evaluator.run_kmeans_clt, data_name, encoder_name,
+	# 		embed_repeat=embed_repeat, clt_repeat=clt_repeat)
+	# 	evaluator.combine_result(encoder_name, 'kmeans ({})'.format('random'), embed_repeat=embed_repeat)
+	# 	evaluator.combine_result(encoder_name, 'kmeans ({})'.format('k-means++'), embed_repeat=embed_repeat)
+
+	# print('AIDE (best) + RPHKMeans (default) ------------------------')
+	# data_names = ['10X_PBMC', 'mouse_bladder_cell', 'mouse_ES_cell', 'worm_neuron_cell', 'Shekhar_mouse_retina', 'PBMC_68k', 'sc_brain']
+	# # data_names = ['Shekhar_mouse_retina_IMB']
+	# # embed_method, reduced_dim, mark = 'AIDE', 256, 'Best'
+	# embed_method, reduced_dim, mark = 'AIDE', 256, 'Best_gene_1000'
+	# for data_name in data_names:
+	# 	encoder_name = get_encoder_name(embed_method, data_name, dim=reduced_dim, mark=mark)
+	# 	clt_mark = 'rph-kmeans (default)'
+	# 	d = {
+	# 		'verbose': 0,
+	# 		# 'n_init': [1, 2, 3, 4, 5, 8, 10, 15, 20, 25, 30, 50, 70, 100],
+	# 		'n_init':[10],
+	# 		# 'max_point': 1500,
+	# 	}
+	# 	evaluator.run_rph_kmeans_with_dict(data_name, encoder_name,
+	# 		clt_kwargs_list=unzip_dict(d),
+	# 		clt_mark=clt_mark, embed_repeat=embed_repeat, clt_repeat=clt_repeat)
+	# 	evaluator.combine_result(encoder_name, clt_mark, embed_repeat=embed_repeat)
+
+	# print('AIDE (best) + RPHKMeans (best) ------------------------')
+	# AIDE_RP_KMEANS_CONFIG_DICT = {
+	# 	'sc_brain':{},
+	# 	'PBMC_68k':{
+	# 		'max_point': 6000,
+	# 	},
+	# 	'Shekhar_mouse_retina':{
+	# 		# 'proj_num': 15,
+	# 	},
+	# 	'10X_PBMC':{
+	# 		'bkt_improve':'min_bkt_size',
+	# 		'bkt_size_keepr': 0.5,
+	# 	},
+	# 	'mouse_bladder_cell':{
+	# 		'w': 0.5,
+	# 		'proj_num': 10,
+	# 	},
+	# 	'mouse_ES_cell':{},
+	# 	'worm_neuron_cell':{
+	# 		'bkt_improve':'min_bkt_size',
+	# 		'bkt_size_keepr':0.5,
+	# 	}
+	# }
+	# data_names = ['10X_PBMC', 'mouse_bladder_cell', 'mouse_ES_cell', 'worm_neuron_cell', 'Shekhar_mouse_retina', 'PBMC_68k', 'sc_brain']
+	# # embed_method, reduced_dim, mark = 'AIDE', 256, 'Best'
+	# embed_method, reduced_dim, mark = 'AIDE', 256, 'Best_gene_1000'
+	# for data_name in data_names:
+	# 	encoder_name = get_encoder_name(embed_method, data_name, dim=reduced_dim, mark=mark)
+	# 	clt_mark = 'rph-kmeans (best)'
+	# 	d = AIDE_RP_KMEANS_CONFIG_DICT[data_name]
+	# 	# d['verbose'] = 0; d['n_init'] = [1, 2, 3, 4, 5, 8, 10, 15, 20]
+	# 	d['verbose'] = 0; d['n_init'] = [10]
+	# 	evaluator.run_rph_kmeans_with_dict(data_name, encoder_name,
+	# 		clt_kwargs_list=unzip_dict(d),
+	# 		clt_mark=clt_mark, embed_repeat=embed_repeat, clt_repeat=clt_repeat)
+	# 	evaluator.combine_result(encoder_name, clt_mark, embed_repeat=embed_repeat)
 
 
-	print('AIDE (default) + KMeans ------------------------')
-	data_names = ['10X_PBMC', 'mouse_bladder_cell', 'mouse_ES_cell', 'worm_neuron_cell', 'Shekhar_mouse_retina', 'PBMC_68k', 'sc_brain']
-	for data_name in data_names:
-		encoder_name = get_encoder_name('AIDE', data_name, mark='Default')
-		evaluator.run_all_embedding_clt(
-			evaluator.run_kmeans_clt, data_name, encoder_name,
-			embed_repeat=embed_repeat, clt_repeat=clt_repeat, draw=False)
-		evaluator.combine_result(encoder_name, 'kmeans ({})'.format('random'), embed_repeat=embed_repeat)
-		evaluator.combine_result(encoder_name, 'kmeans ({})'.format('k-means++'), embed_repeat=embed_repeat)
+	# print('AIDE (best) Sparsity Simulation Embedding =========================================================')
+	# os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+	# AIDE_SIM_SPARSITY_CONFIG_DICT = {
+	# 	'early_stop_patience': None,
+	# 	'max_step_num': 40000,
+	# }
+	# data_names = get_all_sim_dropout_data_names([60, 70, 75, 80, 85, 90, 93])
+	# for data_name in data_names:
+	# 	encoder_name = get_encoder_name('AIDE', data_name, mark='Default-40000')
+	# 	config = AIDEConfig(assign_dict=AIDE_SIM_SPARSITY_CONFIG_DICT)
+	# 	evaluator.run_all_embedding(
+	# 		data_name, encoder_name, 'AIDE', config=config,
+	# 		embed_repeat=embed_repeat, data_type=DATA_MAT)
+	# 	evaluator.eval_embedding(data_name, encoder_name, embed_repeat=embed_repeat)
 
 
-	print('AIDE (default) + RPKMeans (best) ------------------------')
-	AIDE_DEFAULT_RP_KMEANS_BEST_CONFIG_DICT = {
-		'PBMC_68k':{
-			'w': 2.0,
-			'bkt_improve':'min_bkt_size',
-			'bkt_size_keepr': 0.9,
-		},
-		'10X_PBMC':{
-			'w': 0.5,
-		},
-	}
-	for data_name in AIDE_DEFAULT_RP_KMEANS_BEST_CONFIG_DICT:
-		encoder_name = get_encoder_name('AIDE', data_name, mark='Default')
-		clt_mark = 'rp-kmeans (best)'
-		d = AIDE_DEFAULT_RP_KMEANS_BEST_CONFIG_DICT.get(data_name, {})
-		d['verbose'] = 0; d['n_init'] = [1, 2, 3, 4, 5, 8, 10, 15, 20]
-		evaluator.run_rp_kmeans_with_dict(data_name, encoder_name,
-			clt_kwargs_list=unzip_dict(d),
-			clt_mark=clt_mark, embed_repeat=embed_repeat, clt_repeat=clt_repeat)
-		evaluator.combine_result(encoder_name, clt_mark, embed_repeat=embed_repeat)
+	# print('AIDE (default) Embedding =========================================================')
+	# os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+	# data_names = ['10X_PBMC', 'mouse_bladder_cell', 'mouse_ES_cell', 'worm_neuron_cell', 'Shekhar_mouse_retina', 'PBMC_68k', 'sc_brain']
+	# # data_names = ['mouse_ES_cell_IMB'] # ['Shekhar_mouse_retina_IMB', 'mouse_bladder_cell_IMB', 'mouse_ES_cell_IMB']
+	# # embed_method, reduced_dim, mark = 'AIDE', 256, 'Default'
+	# embed_method, reduced_dim, mark = 'AIDE', 256, 'Default-gene_1000'
+	# for data_name in data_names:
+	# 	encoder_name = get_encoder_name(embed_method, data_name, dim=reduced_dim, mark=mark)
+	# 	config = AIDEConfig()
+	# 	evaluator.run_all_embedding(
+	# 		data_name, encoder_name, embed_method, embed_repeat=embed_repeat, data_type=DATA_MAT, config=config)
+	# 	evaluator.eval_embedding(data_name, encoder_name, embed_repeat=embed_repeat)
 
 
-	DEFAULT_RP_KMEANS_CONFIG_DICT = {
-		'verbose': 0,
-		'n_init':[1, 10],
-		# 'n_init': [1, 3, 5, 8, 10, 15, 20, 25, 30, 50, 70, 100],
-	}
-	print('RPKMeans (default) ------------------------')
-	embed_configs = [('PCA', ''), ('AIDE', 'Best')]
-	data_names = ['10X_PBMC', 'mouse_bladder_cell', 'mouse_ES_cell', 'worm_neuron_cell', 'Shekhar_mouse_retina', 'PBMC_68k', 'sc_brain']
-	for embed_method, mark in embed_configs:
-		for data_name in data_names:
-			encoder_name = get_encoder_name(embed_method, data_name, mark=mark)
-			clt_mark = 'rp-kmeans (default)'
-			evaluator.run_rp_kmeans_with_dict(data_name, encoder_name,
-				clt_kwargs_list=unzip_dict(DEFAULT_RP_KMEANS_CONFIG_DICT),
-				clt_mark=clt_mark, embed_repeat=embed_repeat, clt_repeat=clt_repeat)
-			evaluator.combine_result(encoder_name, clt_mark, embed_repeat=embed_repeat)
+	# print('AIDE (default) + KMeans ------------------------')
+	# data_names = ['10X_PBMC', 'mouse_bladder_cell', 'mouse_ES_cell', 'worm_neuron_cell', 'Shekhar_mouse_retina', 'PBMC_68k', 'sc_brain']
+	# # data_names = ['mouse_bladder_cell_IMB', 'mouse_ES_cell_IMB', 'Shekhar_mouse_retina_IMB']
+	# # embed_method, reduced_dim, mark = 'AIDE', 256, 'Default'
+	# embed_method, reduced_dim, mark = 'AIDE', 256, 'Default-gene_1000'
+	# for data_name in data_names:
+	# 	encoder_name = get_encoder_name(embed_method, data_name, dim=reduced_dim, mark=mark)
+	# 	evaluator.run_all_embedding_clt(
+	# 		evaluator.run_kmeans_clt, data_name, encoder_name,
+	# 		embed_repeat=embed_repeat, clt_repeat=clt_repeat, draw=False)
+	# 	evaluator.combine_result(encoder_name, 'kmeans ({})'.format('random'), embed_repeat=embed_repeat)
+	# 	evaluator.combine_result(encoder_name, 'kmeans ({})'.format('k-means++'), embed_repeat=embed_repeat)
 
 
-	print('DeepMDS (default) Embedding =========================================================')
-	data_names = ['10X_PBMC', 'mouse_bladder_cell', 'mouse_ES_cell', 'worm_neuron_cell', 'Shekhar_mouse_retina', 'PBMC_68k', 'sc_brain']
-	for data_name in data_names:
-		encoder_name = get_encoder_name('DeepMDS', data_name, mark='Default')
-		config = DeepMDSConfig()
-		result, ret_dict = evaluator.run_all_embedding(
-			data_name, encoder_name, 'DeepMDS', embed_repeat=embed_repeat, data_type=DATA_MAT, config=config)
-		evaluator.eval_embedding(data_name, encoder_name, embed_repeat=embed_repeat)
+	# print('AIDE (default) + RPHKMeans (best) ------------------------')
+	# AIDE_DEFAULT_RP_KMEANS_BEST_CONFIG_DICT = {
+	# 	'PBMC_68k':{
+	# 		'w': 2.0,
+	# 		'bkt_improve':'min_bkt_size',
+	# 		'bkt_size_keepr': 0.9,
+	# 	},
+	# 	'10X_PBMC':{
+	# 		'w': 0.5,
+	# 	},
+	# }
+	# data_names = ['10X_PBMC', 'PBMC_68k']
+	# # data_names = ['10X_PBMC', 'mouse_bladder_cell', 'mouse_ES_cell', 'worm_neuron_cell', 'Shekhar_mouse_retina', 'PBMC_68k', 'sc_brain']
+	# # embed_method, reduced_dim, mark = 'AIDE', 256, 'Default'
+	# embed_method, reduced_dim, mark = 'AIDE', 256, 'Default-gene_1000'
+	# for data_name in data_names:
+	# 	encoder_name = get_encoder_name(embed_method, data_name, dim=reduced_dim, mark=mark)
+	# 	clt_mark = 'rph-kmeans (best)'
+	# 	# clt_mark = 'rph-kmeans (default)'
+	# 	d = AIDE_DEFAULT_RP_KMEANS_BEST_CONFIG_DICT.get(data_name, {})
+	# 	# d['verbose'] = 0; d['n_init'] = [1, 2, 3, 4, 5, 8, 10, 15, 20]
+	# 	d['verbose'] = 0; d['n_init'] = [10]
+	# 	evaluator.run_rph_kmeans_with_dict(data_name, encoder_name,
+	# 		clt_kwargs_list=unzip_dict(d),
+	# 		clt_mark=clt_mark, embed_repeat=embed_repeat, clt_repeat=clt_repeat)
+	# 	evaluator.combine_result(encoder_name, clt_mark, embed_repeat=embed_repeat)
 
 
-	print('AE (default) Embedding =========================================================')
-	os.environ["CUDA_VISIBLE_DEVICES"] = "1"
-	data_names = ['10X_PBMC', 'mouse_bladder_cell', 'mouse_ES_cell', 'worm_neuron_cell', 'Shekhar_mouse_retina', 'PBMC_68k', 'sc_brain']
-	for data_name in data_names:
-		encoder_name = get_encoder_name('AE', data_name, mark='NoEarlyStop')
-		config = AEConfig(); config.ae_acts[-1] = None
-		# config.ae_drop_out_rate = 0.0
-		config.early_stop_patience = None
-		evaluator.run_all_embedding(
-			data_name, encoder_name, 'AE', embed_repeat=embed_repeat, data_type=DATA_MAT, config=config)
-		evaluator.eval_embedding(data_name, encoder_name, embed_repeat=embed_repeat)
+	# DEFAULT_RP_KMEANS_CONFIG_DICT = {
+	# 	'verbose': 0,
+	# 	# 'n_init':[1, 10],
+	# 	'n_init': [1, 3, 5, 8, 10, 15, 20, 25, 30, 50, 70, 100],
+	# 	# 'max_point': 1500,
+	# }
+	# print('RPHKMeans (default) ------------------------')
+	# embed_configs = [('AIDE', 'Default')] # [('PCA', ''), ('AIDE', 'Best')]
+	# # data_names = ['10X_PBMC', 'mouse_bladder_cell', 'mouse_ES_cell', 'worm_neuron_cell', 'Shekhar_mouse_retina', 'PBMC_68k', 'sc_brain']
+	# data_names = ['Shekhar_mouse_retina_IMB']
+	# for embed_method, mark in embed_configs:
+	# 	for data_name in data_names:
+	# 		encoder_name = get_encoder_name(embed_method, data_name, mark=mark)
+	# 		clt_mark = 'rph-kmeans (default)'
+	# 		evaluator.run_rph_kmeans_with_dict(data_name, encoder_name,
+	# 			clt_kwargs_list=unzip_dict(DEFAULT_RP_KMEANS_CONFIG_DICT),
+	# 			clt_mark=clt_mark, embed_repeat=embed_repeat, clt_repeat=clt_repeat)
+	# 		evaluator.combine_result(encoder_name, clt_mark, embed_repeat=embed_repeat)
 
 
-	# monitor memory:  mprof run --python -C python dim_reduce_clt_eval.py && mprof plot -o mem.png -t "Memory Use"
-	print('PCA/MDS Timing =========================================================')
-	embed_repeat = 3
-	embed_methods = ['PCA']
-	reduced_dim = 256
-	data_names = get_all_sample_data_names('1M_neurons', [1000, 5000, 10000, 50000, 100000, 300000])
-	for embed_method, data_name in itertools.product(embed_methods, data_names):
-		encoder_name = get_encoder_name(embed_method, data_name, reduced_dim, mark='Default-Mem')
-		evaluator.run_all_embedding(
-			data_name, encoder_name, embed_method, embed_repeat=embed_repeat, data_type=DATA_MAT, dim=reduced_dim)
-		evaluator.combine_time_result(encoder_name, embed_repeat)
-
-
-	print('AIDE Timing =========================================================')
-	embed_repeat = 3
-	data_names = get_all_sample_data_names('1M_neurons', [1000, 5000, 10000, 50000, 100000, 300000, 500000, 1000000]) + ['1M_neurons']
-	data_types = [DATA_MAT, DATA_MAT, DATA_MAT, DATA_TFRECORD, DATA_TFRECORD, DATA_TFRECORD, DATA_TFRECORD,DATA_TFRECORD]
-	for data_name, data_type in zip(data_names, data_types):
-		encoder_name = get_encoder_name('AIDE', data_name, mark='Default')
-		config = AIDEConfig()
-		evaluator.run_all_embedding(
-			data_name, encoder_name, 'AIDE', embed_repeat=embed_repeat, data_type=data_type, config=config, save_embedding=False)
-		evaluator.combine_time_result(encoder_name, embed_repeat)
-
-
-	print('K - ARI/NMI =========================================================')
-	data_names = ['10X_PBMC', 'mouse_bladder_cell', 'mouse_ES_cell', 'worm_neuron_cell', 'Shekhar_mouse_retina', 'PBMC_68k', 'sc_brain']
-	default_clt_config_dict = {data_name: {} for data_name in data_names}
-	embed_configs = [
-		('PCA', '', RPKMeans, PCA_RP_KMEANS_CONFIG_DICT, 'rp-kmeans (best; 10)'),
-		('PCA', '', RPKMeans, default_clt_config_dict, 'rp-kmeans (default; 10)'),
-		('PCA', '', KMeans, default_clt_config_dict, 'kmeans (k-means++; 10)'),
-		('PCA', '', KMeans, {dn:{'init':'random'} for dn in data_names}, 'kmeans (random; 10)'),
-		('AIDE', 'Best', RPKMeans, AIDE_RP_KMEANS_CONFIG_DICT, 'rp-kmeans (best; 10)'),
-		('AIDE', 'Best', RPKMeans, default_clt_config_dict, 'rp-kmeans (default; 10)'),
-		('AIDE', 'Best', KMeans, default_clt_config_dict, 'kmeans (k-means++; 10)'),
-		('AIDE', 'Best', KMeans, {dn:{'init':'random'} for dn in data_names}, 'kmeans (random; 10)'),
-	]
-	for embed_method, mark, clt_initializer, dn_to_clt_kwargs, clt_name in embed_configs:
-		for data_name in data_names:
-			encoder_name = get_encoder_name(embed_method, data_name, mark=mark)
-			clt_kwargs = dn_to_clt_kwargs[data_name]; clt_kwargs['n_init'] = 10; clt_kwargs['verbose'] = 0
-			if embed_method == 'AIDE' and data_name == 'mouse_bladder_cell' and clt_name.find('default') != -1:
-				clt_kwargs['w'] = 0.5
-			evaluator.run_k_metric(data_name, encoder_name,
-				embed_repeat_id=0, clt_name=clt_name, clt_initializer=clt_initializer, clt_kwargs=clt_kwargs)
-
-	data_names = ['deng', 'llorens']
-	default_clt_config_dict = {data_name: {} for data_name in data_names}
-	embed_configs = [
-		('PCA', '', RPKMeans, default_clt_config_dict, 'rp-kmeans (default; 10)'),
-		('PCA', '', KMeans, default_clt_config_dict, 'kmeans (k-means++; 10)'),
-		('PCA', '', KMeans, {dn:{'init':'random'} for dn in data_names}, 'kmeans (random; 10)'),
-		('AIDE', 'Default', RPKMeans, default_clt_config_dict, 'rp-kmeans (default; 10)'),
-		('AIDE', 'Default', KMeans, default_clt_config_dict, 'kmeans (k-means++; 10)'),
-		('AIDE', 'Default', KMeans, {dn:{'init':'random'} for dn in data_names}, 'kmeans (random; 10)'),
-	]
-	for embed_method, mark, clt_initializer, dn_to_clt_kwargs, clt_name in embed_configs:
-		for data_name in data_names:
-			dim = 128 if embed_method == 'PCA' and data_name == 'llorens' else 256
-			encoder_name = get_encoder_name(embed_method, data_name, mark=mark, dim=dim)
-			clt_kwargs = dn_to_clt_kwargs[data_name]; clt_kwargs['n_init'] = 10; clt_kwargs['verbose'] = 0
-			evaluator.run_k_metric(data_name, encoder_name,
-				embed_repeat_id=0, clt_name=clt_name, clt_initializer=clt_initializer, clt_kwargs=clt_kwargs)
-
-	data_names = get_all_sim_dropout_data_names([60, 70, 75, 80])
-	default_clt_config_dict = {data_name:{} for data_name in data_names}
-	embed_configs = [
-		('PCA', '', RPKMeans, default_clt_config_dict, 'rp-kmeans (default; 10)'),
-		('PCA', '', KMeans, default_clt_config_dict, 'kmeans (k-means++; 10)'),
-		('PCA', '', KMeans, {dn:{'init':'random'} for dn in data_names}, 'kmeans (random; 10)'),
-		('AIDE', 'Default-40000', RPKMeans, default_clt_config_dict, 'rp-kmeans (default; 10)'),
-		('AIDE', 'Default-40000', KMeans, default_clt_config_dict, 'kmeans (k-means++; 10)'),
-		('AIDE', 'Default-40000', KMeans, {dn:{'init':'random'} for dn in data_names}, 'kmeans (random; 10)'),
-	]
-	for embed_method, mark, clt_initializer, dn_to_clt_kwargs, clt_name in embed_configs:
-		for data_name in data_names:
-			encoder_name = get_encoder_name(embed_method, data_name, mark=mark)
-			clt_kwargs = dn_to_clt_kwargs[data_name]; clt_kwargs['n_init'] = 10; clt_kwargs['verbose'] = 0
-			evaluator.run_k_metric(data_name, encoder_name,
-				embed_repeat_id=0, clt_name=clt_name, clt_initializer=clt_initializer, clt_kwargs=clt_kwargs)
-
-
-	print('K Selection =========================================================')
-	data_names = ['10X_PBMC', 'mouse_bladder_cell', 'mouse_ES_cell', 'worm_neuron_cell', 'Shekhar_mouse_retina', 'PBMC_68k', 'sc_brain']
-	embed_configs = [('PCA', ''), ('AIDE', 'Best')]
-	for embed_method, mark in embed_configs:
-		for data_name in data_names:
-			encoder_name = get_encoder_name(embed_method, data_name, mark=mark)
-			point_reducer_kwargs = {'verbose': 0}
-			if embed_method == 'AIDE' and data_name == 'mouse_bladder_cell': point_reducer_kwargs['w'] = 0.5
-			evaluator.run_k_selection(data_name, encoder_name, embed_repeat_id=0, point_reducer_kwargs=point_reducer_kwargs)
-
-	data_names = ['deng', 'llorens']
-	embed_configs = [('PCA', ''), ('AIDE', 'Default')]
-	for embed_method, mark in embed_configs:
-		for data_name in data_names:
-			dim = 128 if embed_method == 'PCA' and data_name == 'llorens' else 256
-			encoder_name = get_encoder_name(embed_method, data_name, mark=mark, dim=dim)
-			evaluator.run_k_selection(data_name, encoder_name, embed_repeat_id=0, point_reducer_kwargs={'verbose': 0})
-
-	data_names = get_all_sim_dropout_data_names([60, 70, 75, 80])
-	embed_configs = [('PCA', ''), ('AIDE', 'Default-40000')]
-	for embed_method, mark in embed_configs:
-		for data_name in data_names:
-			encoder_name = get_encoder_name(embed_method, data_name, mark=mark)
-			evaluator.run_k_selection(data_name, encoder_name, embed_repeat_id=0, point_reducer_kwargs={'verbose': 0})
+	# print('DeepMDS (default) Embedding =========================================================')
+	# data_names = ['10X_PBMC', 'mouse_bladder_cell', 'mouse_ES_cell', 'worm_neuron_cell', 'Shekhar_mouse_retina', 'PBMC_68k', 'sc_brain']
+	# for data_name in data_names:
+	# 	encoder_name = get_encoder_name('DeepMDS', data_name, mark='Default')
+	# 	config = DeepMDSConfig()
+	# 	result, ret_dict = evaluator.run_all_embedding(
+	# 		data_name, encoder_name, 'DeepMDS', embed_repeat=embed_repeat, data_type=DATA_MAT, config=config)
+	# 	evaluator.eval_embedding(data_name, encoder_name, embed_repeat=embed_repeat)
+	#
+	#
+	# print('AE (default) Embedding =========================================================')
+	# os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+	# data_names = ['10X_PBMC', 'mouse_bladder_cell', 'mouse_ES_cell', 'worm_neuron_cell', 'Shekhar_mouse_retina', 'PBMC_68k', 'sc_brain']
+	# for data_name in data_names:
+	# 	encoder_name = get_encoder_name('AE', data_name, mark='NoEarlyStop')
+	# 	config = AEConfig(); config.ae_acts[-1] = None
+	# 	# config.ae_drop_out_rate = 0.0
+	# 	config.early_stop_patience = None
+	# 	evaluator.run_all_embedding(
+	# 		data_name, encoder_name, 'AE', embed_repeat=embed_repeat, data_type=DATA_MAT, config=config)
+	# 	evaluator.eval_embedding(data_name, encoder_name, embed_repeat=embed_repeat)
+	#
+	#
+	# # monitor memory:  mprof run --python -C python dim_reduce_clt_eval.py && mprof plot -o mem.png -t "Memory Use"
+	# print('PCA/MDS Timing =========================================================')
+	# embed_repeat = 3
+	# embed_methods = ['PCA']
+	# reduced_dim = 256
+	# data_names = get_all_sample_data_names('1M_neurons', [1000, 5000, 10000, 50000, 100000, 300000])
+	# for embed_method, data_name in itertools.product(embed_methods, data_names):
+	# 	encoder_name = get_encoder_name(embed_method, data_name, reduced_dim, mark='Default-Mem')
+	# 	evaluator.run_all_embedding(
+	# 		data_name, encoder_name, embed_method, embed_repeat=embed_repeat, data_type=DATA_MAT, dim=reduced_dim)
+	# 	evaluator.combine_time_result(encoder_name, embed_repeat)
+	#
+	#
+	# print('AIDE Timing =========================================================')
+	# embed_repeat = 3
+	# data_names = get_all_sample_data_names('1M_neurons', [1000, 5000, 10000, 50000, 100000, 300000, 500000, 1000000]) + ['1M_neurons']
+	# data_types = [DATA_MAT, DATA_MAT, DATA_MAT, DATA_TFRECORD, DATA_TFRECORD, DATA_TFRECORD, DATA_TFRECORD,DATA_TFRECORD]
+	# for data_name, data_type in zip(data_names, data_types):
+	# 	encoder_name = get_encoder_name('AIDE', data_name, mark='Default')
+	# 	config = AIDEConfig()
+	# 	evaluator.run_all_embedding(
+	# 		data_name, encoder_name, 'AIDE', embed_repeat=embed_repeat, data_type=data_type, config=config, save_embedding=False)
+	# 	evaluator.combine_time_result(encoder_name, embed_repeat)
+	#
+	#
+	# print('K - ARI/NMI =========================================================')
+	# data_names = ['10X_PBMC', 'mouse_bladder_cell', 'mouse_ES_cell', 'worm_neuron_cell', 'Shekhar_mouse_retina', 'PBMC_68k', 'sc_brain']
+	# default_clt_config_dict = {data_name: {} for data_name in data_names}
+	# embed_configs = [
+	# 	('PCA', '', RPHKMeans, PCA_RP_KMEANS_CONFIG_DICT, 'rph-kmeans (best; 10)'),
+	# 	('PCA', '', RPHKMeans, default_clt_config_dict, 'rph-kmeans (default; 10)'),
+	# 	('PCA', '', KMeans, default_clt_config_dict, 'kmeans (k-means++; 10)'),
+	# 	('PCA', '', KMeans, {dn:{'init':'random'} for dn in data_names}, 'kmeans (random; 10)'),
+	# 	('AIDE', 'Best', RPHKMeans, AIDE_RP_KMEANS_CONFIG_DICT, 'rph-kmeans (best; 10)'),
+	# 	('AIDE', 'Best', RPHKMeans, default_clt_config_dict, 'rph-kmeans (default; 10)'),
+	# 	('AIDE', 'Best', KMeans, default_clt_config_dict, 'kmeans (k-means++; 10)'),
+	# 	('AIDE', 'Best', KMeans, {dn:{'init':'random'} for dn in data_names}, 'kmeans (random; 10)'),
+	# ]
+	# for embed_method, mark, clt_initializer, dn_to_clt_kwargs, clt_name in embed_configs:
+	# 	for data_name in data_names:
+	# 		encoder_name = get_encoder_name(embed_method, data_name, mark=mark)
+	# 		clt_kwargs = dn_to_clt_kwargs[data_name]; clt_kwargs['n_init'] = 10; clt_kwargs['verbose'] = 0
+	# 		if embed_method == 'AIDE' and data_name == 'mouse_bladder_cell' and clt_name.find('default') != -1:
+	# 			clt_kwargs['w'] = 0.5
+	# 		evaluator.run_k_metric(data_name, encoder_name,
+	# 			embed_repeat_id=0, clt_name=clt_name, clt_initializer=clt_initializer, clt_kwargs=clt_kwargs)
+	#
+	# data_names = ['deng', 'llorens']
+	# default_clt_config_dict = {data_name: {} for data_name in data_names}
+	# embed_configs = [
+	# 	('PCA', '', RPHKMeans, default_clt_config_dict, 'rph-kmeans (default; 10)'),
+	# 	('PCA', '', KMeans, default_clt_config_dict, 'kmeans (k-means++; 10)'),
+	# 	('PCA', '', KMeans, {dn:{'init':'random'} for dn in data_names}, 'kmeans (random; 10)'),
+	# 	('AIDE', 'Default', RPHKMeans, default_clt_config_dict, 'rph-kmeans (default; 10)'),
+	# 	('AIDE', 'Default', KMeans, default_clt_config_dict, 'kmeans (k-means++; 10)'),
+	# 	('AIDE', 'Default', KMeans, {dn:{'init':'random'} for dn in data_names}, 'kmeans (random; 10)'),
+	# ]
+	# for embed_method, mark, clt_initializer, dn_to_clt_kwargs, clt_name in embed_configs:
+	# 	for data_name in data_names:
+	# 		dim = 128 if embed_method == 'PCA' and data_name == 'llorens' else 256
+	# 		encoder_name = get_encoder_name(embed_method, data_name, mark=mark, dim=dim)
+	# 		clt_kwargs = dn_to_clt_kwargs[data_name]; clt_kwargs['n_init'] = 10; clt_kwargs['verbose'] = 0
+	# 		evaluator.run_k_metric(data_name, encoder_name,
+	# 			embed_repeat_id=0, clt_name=clt_name, clt_initializer=clt_initializer, clt_kwargs=clt_kwargs)
+	#
+	# data_names = get_all_sim_dropout_data_names([60, 70, 75, 80])
+	# default_clt_config_dict = {data_name:{} for data_name in data_names}
+	# embed_configs = [
+	# 	('PCA', '', RPHKMeans, default_clt_config_dict, 'rph-kmeans (default; 10)'),
+	# 	('PCA', '', KMeans, default_clt_config_dict, 'kmeans (k-means++; 10)'),
+	# 	('PCA', '', KMeans, {dn:{'init':'random'} for dn in data_names}, 'kmeans (random; 10)'),
+	# 	('AIDE', 'Default-40000', RPHKMeans, default_clt_config_dict, 'rph-kmeans (default; 10)'),
+	# 	('AIDE', 'Default-40000', KMeans, default_clt_config_dict, 'kmeans (k-means++; 10)'),
+	# 	('AIDE', 'Default-40000', KMeans, {dn:{'init':'random'} for dn in data_names}, 'kmeans (random; 10)'),
+	# ]
+	# for embed_method, mark, clt_initializer, dn_to_clt_kwargs, clt_name in embed_configs:
+	# 	for data_name in data_names:
+	# 		encoder_name = get_encoder_name(embed_method, data_name, mark=mark)
+	# 		clt_kwargs = dn_to_clt_kwargs[data_name]; clt_kwargs['n_init'] = 10; clt_kwargs['verbose'] = 0
+	# 		evaluator.run_k_metric(data_name, encoder_name,
+	# 			embed_repeat_id=0, clt_name=clt_name, clt_initializer=clt_initializer, clt_kwargs=clt_kwargs)
+	#
+	#
+	# print('K Selection =========================================================')
+	# data_names = ['10X_PBMC', 'mouse_bladder_cell', 'mouse_ES_cell', 'worm_neuron_cell', 'Shekhar_mouse_retina', 'PBMC_68k', 'sc_brain']
+	# embed_configs = [('PCA', ''), ('AIDE', 'Best')]
+	# for embed_method, mark in embed_configs:
+	# 	for data_name in data_names:
+	# 		encoder_name = get_encoder_name(embed_method, data_name, mark=mark)
+	# 		point_reducer_kwargs = {'verbose': 0}
+	# 		if embed_method == 'AIDE' and data_name == 'mouse_bladder_cell': point_reducer_kwargs['w'] = 0.5
+	# 		evaluator.run_k_selection(data_name, encoder_name, embed_repeat_id=0, point_reducer_kwargs=point_reducer_kwargs)
+	#
+	# data_names = ['deng', 'llorens']
+	# embed_configs = [('PCA', ''), ('AIDE', 'Default')]
+	# for embed_method, mark in embed_configs:
+	# 	for data_name in data_names:
+	# 		dim = 128 if embed_method == 'PCA' and data_name == 'llorens' else 256
+	# 		encoder_name = get_encoder_name(embed_method, data_name, mark=mark, dim=dim)
+	# 		evaluator.run_k_selection(data_name, encoder_name, embed_repeat_id=0, point_reducer_kwargs={'verbose': 0})
+	#
+	# data_names = get_all_sim_dropout_data_names([60, 70, 75, 80])
+	# embed_configs = [('PCA', ''), ('AIDE', 'Default-40000')]
+	# for embed_method, mark in embed_configs:
+	# 	for data_name in data_names:
+	# 		encoder_name = get_encoder_name(embed_method, data_name, mark=mark)
+	# 		evaluator.run_k_selection(data_name, encoder_name, embed_repeat_id=0, point_reducer_kwargs={'verbose': 0})
 
 

@@ -385,7 +385,10 @@ def get_all_imb_data_names():
 	return [
 		'sc_brain_IMB',
 		'PBMC_68k_IMB',
+		'Shekhar_mouse_retina_IMB',
 		'10X_PBMC_IMB',
+		'mouse_bladder_cell_IMB',
+		'mouse_ES_cell_IMB',
 		'worm_neuron_cell_IMB',
 	]
 
@@ -405,7 +408,9 @@ def is_extreme_large(data_name):
 
 if __name__ == '__main__':
 	# get_raw_data('Mouse_Bone_Marrow')
-	gen_sample_data('1M_neurons', [1000, 5000, 10000, 50000, 100000, 500000, 1000000])
+	# gen_sample_data('1M_neurons', [1000, 5000, 10000, 50000, 100000, 500000, 1000000])
+	for data_name in ['mouse_bladder_cell_IMB', 'mouse_ES_cell_IMB']:
+		get_raw_data(data_name)
 
 
 

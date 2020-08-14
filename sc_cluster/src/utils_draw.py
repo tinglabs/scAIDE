@@ -30,7 +30,7 @@ def simple_dot_plot(figpath, x, y, p_types=None, p_type_order=None, sizes=None, 
 		x (array-like)
 		y (array-like)
 		p_types (array-like): different point color for different pType
-		p_type_order (larray-like):
+		p_type_order (array-like):
 		sizes (dict or list or tuple or None): {label: size}
 		markers (dict or list or None): {label: marker}
 		p_id_to_text (dict): {pId: str}
@@ -59,6 +59,25 @@ def simple_dot_plot(figpath, x, y, p_types=None, p_type_order=None, sizes=None, 
 	plt.close()
 
 
+def simple_heat_map(figpath, a, row_labels, col_labels, row_name=None, col_name=None, title=None, vmin=None, vmax=None,
+		colormap=None, annot=None, fmt='.2g', figsize=None): # YlGnBu
+	"""
+	Args:
+		a (np.ndarray): 2d array
+		row_labels (list)
+		col_labels (list)
+		colormap: See https://matplotlib.org/examples/color/colormaps_reference.html
+	"""
+	row_name = 'y' if row_name is None else row_name
+	col_name = 'y' if col_name is None else col_name
+	title = 'Heat Map' if title is None else title
+	df = pd.DataFrame(a, index=row_labels, columns=col_labels)
+	plt.figure(figsize=figsize)
+	ax = plt.axes()
+	sns.heatmap(df, ax=ax, cmap=colormap, annot=annot, fmt=fmt, vmin=vmin, vmax=vmax)
+	ax.set_xlabel(col_name); ax.set_ylabel(row_name); ax.set_title(title)
+	plt.savefig(figpath)
+	plt.close()
 
 
 

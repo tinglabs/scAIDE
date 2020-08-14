@@ -4,7 +4,9 @@
 baseline/project
 baseline/result.zip
 sc_cluster/result
-sc_cluster/demo/data
+demo/data
+rsyncToServer.sh
+exclude.txt
 
 
 # Byte-compiled / optimized / DLL files

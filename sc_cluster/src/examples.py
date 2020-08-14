@@ -7,7 +7,7 @@ import numpy as np
 
 from preprocess import BasicPreprocessor
 from dist_ae import DistAutoEncoder, DistAutoEncoderConfig
-from rp_kmeans import RPKMeans
+from rph_kmeans import RPHKMeans
 
 print('get data and preprocess')
 X = np.random.rand(1000, 2000)  # (n_samples, n_features)
@@ -20,7 +20,7 @@ encoder = DistAutoEncoder(name='TestEncoder', save_folder='TestFolder')
 embedding = encoder.fit_transform(X, config=config)	# (n_samples, 256)
 
 print('clustering')
-clt = RPKMeans()
+clt = RPHKMeans()
 y_pred = clt.fit_predict(embedding) # (n_samples,)
 
 

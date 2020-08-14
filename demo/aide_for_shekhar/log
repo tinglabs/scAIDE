@@ -1,0 +1,233 @@
+optimizer: adam
+lr: 0.0001
+optimizer_kwargs: {}
+alpha: 12.0
+w_decay: 0.0
+ae_drop_out_rate: 0.4
+mds_drop_out_rate: 0.0
+ae_units: [1024, 512, 256]
+ae_acts: ['relu', 'relu', 'relu']
+mds_units: [1024, 512, 256]
+mds_acts: ['relu', 'relu', None]
+dist_name: euclidean
+mds_loss: abs_s_stress
+dist_eps: 1e-06
+pretrain_step_num: 1000
+max_step_num: 20000
+min_step_num: 4000
+early_stop_patience: 6
+print_freq: 50
+val_freq: 100
+draw_freq: 500
+save_model: False
+fix_ae: False
+verbose: True
+batch_size: 256
+validate_size: 2560
+embed_batch_size: 2560
+train_shuffle_buffer: 2560
+train_interleave_cycle: 2
+n_samples: 27499
+n_features: 13166
+issparse: True
+dtype: float32
+feed_type: tfrecord
+train_tfrecord_path: /home/yhuang/LSH/sc_cluster/demo/data/Shekhar_mouse_retina_PP/train_csr_shards
+pred_tfrecord_path: /home/yhuang/LSH/sc_cluster/demo/data/Shekhar_mouse_retina_PP/pred_csr.tfrecord
+Pretrain begin============================================
+Step 50(5.0%): Batch Loss=458.53656005859375
+Step 100(10.0%): Batch Loss=443.490234375
+Step 150(15.0%): Batch Loss=431.74456787109375
+Step 200(20.0%): Batch Loss=425.32208251953125
+Step 250(25.0%): Batch Loss=430.6326904296875
+Step 300(30.0%): Batch Loss=429.17059326171875
+Step 350(35.0%): Batch Loss=430.3403015136719
+Step 400(40.0%): Batch Loss=426.69659423828125
+Step 450(45.0%): Batch Loss=427.252197265625
+Step 500(50.0%): Batch Loss=432.0799255371094
+Step 550(55.0%): Batch Loss=426.4522705078125
+Step 600(60.0%): Batch Loss=421.9383544921875
+Step 650(65.0%): Batch Loss=426.6582946777344
+Step 700(70.0%): Batch Loss=425.79010009765625
+Step 750(75.0%): Batch Loss=425.8892822265625
+Step 800(80.0%): Batch Loss=423.3916015625
+Step 850(85.0%): Batch Loss=422.9723205566406
+Step 900(90.0%): Batch Loss=423.2769775390625
+Step 950(95.0%): Batch Loss=420.61492919921875
+Step 1000(100.0%): Batch Loss=427.2901611328125
+Pretrain end.============================================
+Step 50(0.25%); Global Step 50: Batch Loss=469.0723876953125; [Reconstruct, MDS, L2] Loss = [445.16647, 1.9921587, 0.0]
+Step 100(0.5%); Global Step 100: Batch Loss=468.0125427246094; [Reconstruct, MDS, L2] Loss = [450.8852, 1.42728, 0.0]
+Step 100(0.5%); Global Step 100: Validation Loss=478.8590393066406; [Reconstruct, MDS, L2] Loss = [460.24512, 1.5511627, 0.0]; Min Val Loss = 478.8590393066406; No Improve = 0; 
+Step 150(0.75%); Global Step 150: Batch Loss=456.04620361328125; [Reconstruct, MDS, L2] Loss = [441.94772, 1.1748731, 0.0]
+Step 200(1.0%); Global Step 200: Batch Loss=459.4109191894531; [Reconstruct, MDS, L2] Loss = [446.55542, 1.071291, 0.0]
+Step 200(1.0%); Global Step 200: Validation Loss=474.1136779785156; [Reconstruct, MDS, L2] Loss = [456.7666, 1.445593, 0.0]; Min Val Loss = 474.1136779785156; No Improve = 0; 
+Step 250(1.25%); Global Step 250: Batch Loss=454.439697265625; [Reconstruct, MDS, L2] Loss = [443.53772, 0.90849924, 0.0]
+Step 300(1.5%); Global Step 300: Batch Loss=458.5064392089844; [Reconstruct, MDS, L2] Loss = [447.76462, 0.8951527, 0.0]
+Step 300(1.5%); Global Step 300: Validation Loss=469.4679260253906; [Reconstruct, MDS, L2] Loss = [453.21655, 1.3542783, 0.0]; Min Val Loss = 469.4679260253906; No Improve = 0; 
+Step 350(1.75%); Global Step 350: Batch Loss=451.6401062011719; [Reconstruct, MDS, L2] Loss = [442.44678, 0.76611185, 0.0]
+Step 400(2.0%); Global Step 400: Batch Loss=455.1471252441406; [Reconstruct, MDS, L2] Loss = [447.20532, 0.66181725, 0.0]
+Step 400(2.0%); Global Step 400: Validation Loss=465.2250061035156; [Reconstruct, MDS, L2] Loss = [449.8333, 1.282641, 0.0]; Min Val Loss = 465.2250061035156; No Improve = 0; 
+Step 450(2.25%); Global Step 450: Batch Loss=452.5315856933594; [Reconstruct, MDS, L2] Loss = [443.51428, 0.7514414, 0.0]
+Step 500(2.5%); Global Step 500: Batch Loss=449.3435974121094; [Reconstruct, MDS, L2] Loss = [442.08896, 0.60455215, 0.0]
+Step 500(2.5%); Global Step 500: Validation Loss=462.9978942871094; [Reconstruct, MDS, L2] Loss = [446.73096, 1.3555748, 0.0]; Min Val Loss = 462.9978942871094; No Improve = 0; 
+Step 550(2.75%); Global Step 550: Batch Loss=450.063720703125; [Reconstruct, MDS, L2] Loss = [442.92117, 0.5952113, 0.0]
+Step 600(3.0%); Global Step 600: Batch Loss=449.04754638671875; [Reconstruct, MDS, L2] Loss = [442.90198, 0.51213163, 0.0]
+Step 600(3.0%); Global Step 600: Validation Loss=457.75; [Reconstruct, MDS, L2] Loss = [444.60043, 1.095796, 0.0]; Min Val Loss = 457.75; No Improve = 0; 
+Step 650(3.25%); Global Step 650: Batch Loss=444.55615234375; [Reconstruct, MDS, L2] Loss = [438.86407, 0.4743401, 0.0]
+Step 700(3.5%); Global Step 700: Batch Loss=453.7720642089844; [Reconstruct, MDS, L2] Loss = [447.41232, 0.5299778, 0.0]
+Step 700(3.5%); Global Step 700: Validation Loss=455.2333984375; [Reconstruct, MDS, L2] Loss = [442.99722, 1.019684, 0.0]; Min Val Loss = 455.2333984375; No Improve = 0; 
+Step 750(3.75%); Global Step 750: Batch Loss=451.6842956542969; [Reconstruct, MDS, L2] Loss = [444.65143, 0.5860721, 0.0]
+Step 800(4.0%); Global Step 800: Batch Loss=450.2040710449219; [Reconstruct, MDS, L2] Loss = [444.5906, 0.4677876, 0.0]
+Step 800(4.0%); Global Step 800: Validation Loss=452.9298400878906; [Reconstruct, MDS, L2] Loss = [441.76807, 0.93014526, 0.0]; Min Val Loss = 452.9298400878906; No Improve = 0; 
+Step 850(4.25%); Global Step 850: Batch Loss=449.1911926269531; [Reconstruct, MDS, L2] Loss = [441.43542, 0.6463129, 0.0]
+Step 900(4.5%); Global Step 900: Batch Loss=442.1690979003906; [Reconstruct, MDS, L2] Loss = [436.79935, 0.44747993, 0.0]
+Step 900(4.5%); Global Step 900: Validation Loss=453.1734313964844; [Reconstruct, MDS, L2] Loss = [441.20224, 0.9975977, 0.0]; Min Val Loss = 452.9298400878906; No Improve = 1; 
+Step 950(4.75%); Global Step 950: Batch Loss=443.8100280761719; [Reconstruct, MDS, L2] Loss = [437.70212, 0.5089935, 0.0]
+Step 1000(5.0%); Global Step 1000: Batch Loss=447.53955078125; [Reconstruct, MDS, L2] Loss = [442.28412, 0.43795207, 0.0]
+Step 1000(5.0%); Global Step 1000: Validation Loss=450.81658935546875; [Reconstruct, MDS, L2] Loss = [440.48407, 0.8610467, 0.0]; Min Val Loss = 450.81658935546875; No Improve = 0; 
+Step 1050(5.25%); Global Step 1050: Batch Loss=446.70068359375; [Reconstruct, MDS, L2] Loss = [440.96417, 0.4780432, 0.0]
+Step 1100(5.5%); Global Step 1100: Batch Loss=449.7433776855469; [Reconstruct, MDS, L2] Loss = [443.69034, 0.50441945, 0.0]
+Step 1100(5.5%); Global Step 1100: Validation Loss=446.20880126953125; [Reconstruct, MDS, L2] Loss = [439.70303, 0.5421468, 0.0]; Min Val Loss = 446.20880126953125; No Improve = 0; 
+Step 1150(5.75%); Global Step 1150: Batch Loss=443.2749328613281; [Reconstruct, MDS, L2] Loss = [437.74268, 0.46102124, 0.0]
+Step 1200(6.0%); Global Step 1200: Batch Loss=447.53857421875; [Reconstruct, MDS, L2] Loss = [441.26978, 0.5224008, 0.0]
+Step 1200(6.0%); Global Step 1200: Validation Loss=445.31170654296875; [Reconstruct, MDS, L2] Loss = [439.08466, 0.51892316, 0.0]; Min Val Loss = 445.31170654296875; No Improve = 0; 
+Step 1250(6.25%); Global Step 1250: Batch Loss=444.91595458984375; [Reconstruct, MDS, L2] Loss = [438.68774, 0.51901746, 0.0]
+Step 1300(6.5%); Global Step 1300: Batch Loss=447.3907470703125; [Reconstruct, MDS, L2] Loss = [442.36884, 0.41849273, 0.0]
+Step 1300(6.5%); Global Step 1300: Validation Loss=446.94647216796875; [Reconstruct, MDS, L2] Loss = [438.52277, 0.70197433, 0.0]; Min Val Loss = 445.31170654296875; No Improve = 1; 
+Step 1350(6.75%); Global Step 1350: Batch Loss=446.5849304199219; [Reconstruct, MDS, L2] Loss = [439.97998, 0.5504123, 0.0]
+Step 1400(7.0%); Global Step 1400: Batch Loss=444.43994140625; [Reconstruct, MDS, L2] Loss = [438.71945, 0.4767071, 0.0]
+Step 1400(7.0%); Global Step 1400: Validation Loss=447.128173828125; [Reconstruct, MDS, L2] Loss = [438.11102, 0.75142705, 0.0]; Min Val Loss = 445.31170654296875; No Improve = 2; 
+Step 1450(7.25%); Global Step 1450: Batch Loss=439.4839782714844; [Reconstruct, MDS, L2] Loss = [432.51694, 0.5805874, 0.0]
+Step 1500(7.5%); Global Step 1500: Batch Loss=440.8024597167969; [Reconstruct, MDS, L2] Loss = [434.27457, 0.54399186, 0.0]
+Step 1500(7.5%); Global Step 1500: Validation Loss=442.92803955078125; [Reconstruct, MDS, L2] Loss = [437.66968, 0.4381953, 0.0]; Min Val Loss = 442.92803955078125; No Improve = 0; 
+Step 1550(7.75%); Global Step 1550: Batch Loss=442.6163024902344; [Reconstruct, MDS, L2] Loss = [436.06903, 0.5456051, 0.0]
+Step 1600(8.0%); Global Step 1600: Batch Loss=441.5935363769531; [Reconstruct, MDS, L2] Loss = [434.7892, 0.5670267, 0.0]
+Step 1600(8.0%); Global Step 1600: Validation Loss=442.82781982421875; [Reconstruct, MDS, L2] Loss = [437.0581, 0.48081064, 0.0]; Min Val Loss = 442.82781982421875; No Improve = 0; 
+Step 1650(8.25%); Global Step 1650: Batch Loss=435.55731201171875; [Reconstruct, MDS, L2] Loss = [429.04672, 0.5425484, 0.0]
+Step 1700(8.5%); Global Step 1700: Batch Loss=441.84130859375; [Reconstruct, MDS, L2] Loss = [434.7355, 0.5921515, 0.0]
+Step 1700(8.5%); Global Step 1700: Validation Loss=442.86456298828125; [Reconstruct, MDS, L2] Loss = [436.68857, 0.5146629, 0.0]; Min Val Loss = 442.82781982421875; No Improve = 1; 
+Step 1750(8.75%); Global Step 1750: Batch Loss=439.2486572265625; [Reconstruct, MDS, L2] Loss = [432.0641, 0.5987139, 0.0]
+Step 1800(9.0%); Global Step 1800: Batch Loss=444.93218994140625; [Reconstruct, MDS, L2] Loss = [438.82, 0.50934887, 0.0]
+Step 1800(9.0%); Global Step 1800: Validation Loss=443.6553649902344; [Reconstruct, MDS, L2] Loss = [436.5047, 0.59589523, 0.0]; Min Val Loss = 442.82781982421875; No Improve = 2; 
+Step 1850(9.25%); Global Step 1850: Batch Loss=440.3142395019531; [Reconstruct, MDS, L2] Loss = [434.25262, 0.5051356, 0.0]
+Step 1900(9.5%); Global Step 1900: Batch Loss=444.59979248046875; [Reconstruct, MDS, L2] Loss = [438.35577, 0.52033526, 0.0]
+Step 1900(9.5%); Global Step 1900: Validation Loss=442.57391357421875; [Reconstruct, MDS, L2] Loss = [436.06232, 0.54263693, 0.0]; Min Val Loss = 442.57391357421875; No Improve = 0; 
+Step 1950(9.75%); Global Step 1950: Batch Loss=440.41375732421875; [Reconstruct, MDS, L2] Loss = [433.31503, 0.5915595, 0.0]
+Step 2000(10.0%); Global Step 2000: Batch Loss=443.68963623046875; [Reconstruct, MDS, L2] Loss = [437.7694, 0.49335337, 0.0]
+Step 2000(10.0%); Global Step 2000: Validation Loss=442.4388732910156; [Reconstruct, MDS, L2] Loss = [435.7622, 0.5563909, 0.0]; Min Val Loss = 442.4388732910156; No Improve = 0; 
+Step 2050(10.25%); Global Step 2050: Batch Loss=433.7063293457031; [Reconstruct, MDS, L2] Loss = [427.8307, 0.4896357, 0.0]
+Step 2100(10.5%); Global Step 2100: Batch Loss=446.1799621582031; [Reconstruct, MDS, L2] Loss = [440.05304, 0.510577, 0.0]
+Step 2100(10.5%); Global Step 2100: Validation Loss=441.16064453125; [Reconstruct, MDS, L2] Loss = [435.72974, 0.4525756, 0.0]; Min Val Loss = 441.16064453125; No Improve = 0; 
+Step 2150(10.75%); Global Step 2150: Batch Loss=437.0105285644531; [Reconstruct, MDS, L2] Loss = [430.5505, 0.5383362, 0.0]
+Step 2200(11.0%); Global Step 2200: Batch Loss=440.0019836425781; [Reconstruct, MDS, L2] Loss = [433.72958, 0.522701, 0.0]
+Step 2200(11.0%); Global Step 2200: Validation Loss=441.22418212890625; [Reconstruct, MDS, L2] Loss = [435.26544, 0.4965581, 0.0]; Min Val Loss = 441.16064453125; No Improve = 1; 
+Step 2250(11.25%); Global Step 2250: Batch Loss=443.8926696777344; [Reconstruct, MDS, L2] Loss = [436.66537, 0.6022748, 0.0]
+Step 2300(11.5%); Global Step 2300: Batch Loss=441.980712890625; [Reconstruct, MDS, L2] Loss = [436.07138, 0.4924444, 0.0]
+Step 2300(11.5%); Global Step 2300: Validation Loss=442.722900390625; [Reconstruct, MDS, L2] Loss = [435.11456, 0.63402975, 0.0]; Min Val Loss = 441.16064453125; No Improve = 2; 
+Step 2350(11.75%); Global Step 2350: Batch Loss=435.54449462890625; [Reconstruct, MDS, L2] Loss = [429.29724, 0.5206057, 0.0]
+Step 2400(12.0%); Global Step 2400: Batch Loss=436.06463623046875; [Reconstruct, MDS, L2] Loss = [427.987, 0.67313737, 0.0]
+Step 2400(12.0%); Global Step 2400: Validation Loss=440.95166015625; [Reconstruct, MDS, L2] Loss = [434.8935, 0.50484216, 0.0]; Min Val Loss = 440.95166015625; No Improve = 0; 
+Step 2450(12.25%); Global Step 2450: Batch Loss=437.25860595703125; [Reconstruct, MDS, L2] Loss = [430.45023, 0.5673644, 0.0]
+Step 2500(12.5%); Global Step 2500: Batch Loss=436.0802917480469; [Reconstruct, MDS, L2] Loss = [431.15466, 0.4104691, 0.0]
+Step 2500(12.5%); Global Step 2500: Validation Loss=439.865234375; [Reconstruct, MDS, L2] Loss = [434.45514, 0.45084196, 0.0]; Min Val Loss = 439.865234375; No Improve = 0; 
+Step 2550(12.75%); Global Step 2550: Batch Loss=439.5786437988281; [Reconstruct, MDS, L2] Loss = [433.54034, 0.50319207, 0.0]
+Step 2600(13.0%); Global Step 2600: Batch Loss=439.44244384765625; [Reconstruct, MDS, L2] Loss = [433.9573, 0.45709607, 0.0]
+Step 2600(13.0%); Global Step 2600: Validation Loss=439.5796813964844; [Reconstruct, MDS, L2] Loss = [434.2916, 0.44067702, 0.0]; Min Val Loss = 439.5796813964844; No Improve = 0; 
+Step 2650(13.25%); Global Step 2650: Batch Loss=438.70855712890625; [Reconstruct, MDS, L2] Loss = [433.15753, 0.46258625, 0.0]
+Step 2700(13.5%); Global Step 2700: Batch Loss=438.3476257324219; [Reconstruct, MDS, L2] Loss = [431.4217, 0.5771612, 0.0]
+Step 2700(13.5%); Global Step 2700: Validation Loss=439.81732177734375; [Reconstruct, MDS, L2] Loss = [433.93524, 0.49017462, 0.0]; Min Val Loss = 439.5796813964844; No Improve = 1; 
+Step 2750(13.75%); Global Step 2750: Batch Loss=441.37518310546875; [Reconstruct, MDS, L2] Loss = [434.4945, 0.573389, 0.0]
+Step 2800(14.0%); Global Step 2800: Batch Loss=437.4388122558594; [Reconstruct, MDS, L2] Loss = [431.50507, 0.49447903, 0.0]
+Step 2800(14.0%); Global Step 2800: Validation Loss=440.5201110839844; [Reconstruct, MDS, L2] Loss = [433.88165, 0.5532091, 0.0]; Min Val Loss = 439.5796813964844; No Improve = 2; 
+Step 2850(14.25%); Global Step 2850: Batch Loss=438.81024169921875; [Reconstruct, MDS, L2] Loss = [431.20975, 0.633375, 0.0]
+Step 2900(14.5%); Global Step 2900: Batch Loss=438.7498779296875; [Reconstruct, MDS, L2] Loss = [432.0362, 0.5594741, 0.0]
+Step 2900(14.5%); Global Step 2900: Validation Loss=439.05743408203125; [Reconstruct, MDS, L2] Loss = [433.6172, 0.45335954, 0.0]; Min Val Loss = 439.05743408203125; No Improve = 0; 
+Step 2950(14.75%); Global Step 2950: Batch Loss=443.7816162109375; [Reconstruct, MDS, L2] Loss = [435.90308, 0.6565448, 0.0]
+Step 3000(15.0%); Global Step 3000: Batch Loss=443.8336181640625; [Reconstruct, MDS, L2] Loss = [436.86133, 0.58102316, 0.0]
+Step 3000(15.0%); Global Step 3000: Validation Loss=440.09478759765625; [Reconstruct, MDS, L2] Loss = [433.51447, 0.54835737, 0.0]; Min Val Loss = 439.05743408203125; No Improve = 1; 
+Step 3050(15.25%); Global Step 3050: Batch Loss=441.6548767089844; [Reconstruct, MDS, L2] Loss = [435.82642, 0.48570555, 0.0]
+Step 3100(15.5%); Global Step 3100: Batch Loss=440.70452880859375; [Reconstruct, MDS, L2] Loss = [433.7582, 0.5788591, 0.0]
+Step 3100(15.5%); Global Step 3100: Validation Loss=439.2950744628906; [Reconstruct, MDS, L2] Loss = [433.22076, 0.506189, 0.0]; Min Val Loss = 439.05743408203125; No Improve = 2; 
+Step 3150(15.75%); Global Step 3150: Batch Loss=437.37689208984375; [Reconstruct, MDS, L2] Loss = [431.6616, 0.476275, 0.0]
+Step 3200(16.0%); Global Step 3200: Batch Loss=435.9267272949219; [Reconstruct, MDS, L2] Loss = [429.40182, 0.5437416, 0.0]
+Step 3200(16.0%); Global Step 3200: Validation Loss=438.13067626953125; [Reconstruct, MDS, L2] Loss = [432.9852, 0.428788, 0.0]; Min Val Loss = 438.13067626953125; No Improve = 0; 
+Step 3250(16.25%); Global Step 3250: Batch Loss=444.622314453125; [Reconstruct, MDS, L2] Loss = [438.7734, 0.48740917, 0.0]
+Step 3300(16.5%); Global Step 3300: Batch Loss=438.2752990722656; [Reconstruct, MDS, L2] Loss = [432.105, 0.5141917, 0.0]
+Step 3300(16.5%); Global Step 3300: Validation Loss=438.3977966308594; [Reconstruct, MDS, L2] Loss = [433.00015, 0.44980732, 0.0]; Min Val Loss = 438.13067626953125; No Improve = 1; 
+Step 3350(16.75%); Global Step 3350: Batch Loss=438.91046142578125; [Reconstruct, MDS, L2] Loss = [432.0967, 0.5678118, 0.0]
+Step 3400(17.0%); Global Step 3400: Batch Loss=440.7171936035156; [Reconstruct, MDS, L2] Loss = [434.36444, 0.5293959, 0.0]
+Step 3400(17.0%); Global Step 3400: Validation Loss=438.5304260253906; [Reconstruct, MDS, L2] Loss = [432.81186, 0.4765451, 0.0]; Min Val Loss = 438.13067626953125; No Improve = 2; 
+Step 3450(17.25%); Global Step 3450: Batch Loss=437.4617614746094; [Reconstruct, MDS, L2] Loss = [429.73166, 0.64417565, 0.0]
+Step 3500(17.5%); Global Step 3500: Batch Loss=443.1824951171875; [Reconstruct, MDS, L2] Loss = [436.2556, 0.57724094, 0.0]
+Step 3500(17.5%); Global Step 3500: Validation Loss=438.04962158203125; [Reconstruct, MDS, L2] Loss = [432.8606, 0.43241864, 0.0]; Min Val Loss = 438.04962158203125; No Improve = 0; 
+Step 3550(17.75%); Global Step 3550: Batch Loss=442.0870361328125; [Reconstruct, MDS, L2] Loss = [436.21106, 0.48966458, 0.0]
+Step 3600(18.0%); Global Step 3600: Batch Loss=437.6090087890625; [Reconstruct, MDS, L2] Loss = [431.69968, 0.49244538, 0.0]
+Step 3600(18.0%); Global Step 3600: Validation Loss=438.1487731933594; [Reconstruct, MDS, L2] Loss = [432.63925, 0.4591236, 0.0]; Min Val Loss = 438.04962158203125; No Improve = 1; 
+Step 3650(18.25%); Global Step 3650: Batch Loss=433.34625244140625; [Reconstruct, MDS, L2] Loss = [427.46692, 0.4899456, 0.0]
+Step 3700(18.5%); Global Step 3700: Batch Loss=438.30755615234375; [Reconstruct, MDS, L2] Loss = [432.67682, 0.46922708, 0.0]
+Step 3700(18.5%); Global Step 3700: Validation Loss=437.5389099121094; [Reconstruct, MDS, L2] Loss = [432.47607, 0.42190552, 0.0]; Min Val Loss = 437.5389099121094; No Improve = 0; 
+Step 3750(18.75%); Global Step 3750: Batch Loss=437.26068115234375; [Reconstruct, MDS, L2] Loss = [429.12402, 0.6780535, 0.0]
+Step 3800(19.0%); Global Step 3800: Batch Loss=440.0322265625; [Reconstruct, MDS, L2] Loss = [434.46103, 0.4642666, 0.0]
+Step 3800(19.0%); Global Step 3800: Validation Loss=437.91015625; [Reconstruct, MDS, L2] Loss = [432.31723, 0.4660735, 0.0]; Min Val Loss = 437.5389099121094; No Improve = 1; 
+Step 3850(19.25%); Global Step 3850: Batch Loss=437.62225341796875; [Reconstruct, MDS, L2] Loss = [431.3072, 0.5262542, 0.0]
+Step 3900(19.5%); Global Step 3900: Batch Loss=434.43438720703125; [Reconstruct, MDS, L2] Loss = [426.53906, 0.6579431, 0.0]
+Step 3900(19.5%); Global Step 3900: Validation Loss=437.96502685546875; [Reconstruct, MDS, L2] Loss = [432.08063, 0.4903718, 0.0]; Min Val Loss = 437.5389099121094; No Improve = 2; 
+Step 3950(19.75%); Global Step 3950: Batch Loss=441.22601318359375; [Reconstruct, MDS, L2] Loss = [433.45218, 0.6478203, 0.0]
+Step 4000(20.0%); Global Step 4000: Batch Loss=438.3706970214844; [Reconstruct, MDS, L2] Loss = [431.29022, 0.5900388, 0.0]
+Step 4000(20.0%); Global Step 4000: Validation Loss=437.29132080078125; [Reconstruct, MDS, L2] Loss = [431.92505, 0.44719154, 0.0]; Min Val Loss = 437.29132080078125; No Improve = 0; 
+Step 4050(20.25%); Global Step 4050: Batch Loss=443.3697204589844; [Reconstruct, MDS, L2] Loss = [437.265, 0.5087267, 0.0]
+Step 4100(20.5%); Global Step 4100: Batch Loss=440.4408874511719; [Reconstruct, MDS, L2] Loss = [432.44424, 0.6663858, 0.0]
+Step 4100(20.5%); Global Step 4100: Validation Loss=439.6077575683594; [Reconstruct, MDS, L2] Loss = [431.72568, 0.65684164, 0.0]; Min Val Loss = 437.29132080078125; No Improve = 1; 
+Step 4150(20.75%); Global Step 4150: Batch Loss=434.88470458984375; [Reconstruct, MDS, L2] Loss = [429.5186, 0.4471778, 0.0]
+Step 4200(21.0%); Global Step 4200: Batch Loss=435.8144836425781; [Reconstruct, MDS, L2] Loss = [430.05527, 0.47993413, 0.0]
+Step 4200(21.0%); Global Step 4200: Validation Loss=436.85272216796875; [Reconstruct, MDS, L2] Loss = [431.67816, 0.43120947, 0.0]; Min Val Loss = 436.85272216796875; No Improve = 0; 
+Step 4250(21.25%); Global Step 4250: Batch Loss=439.7524108886719; [Reconstruct, MDS, L2] Loss = [433.24826, 0.54201365, 0.0]
+Step 4300(21.5%); Global Step 4300: Batch Loss=439.7980041503906; [Reconstruct, MDS, L2] Loss = [431.78806, 0.66749674, 0.0]
+Step 4300(21.5%); Global Step 4300: Validation Loss=438.17987060546875; [Reconstruct, MDS, L2] Loss = [431.2877, 0.5743475, 0.0]; Min Val Loss = 436.85272216796875; No Improve = 1; 
+Step 4350(21.75%); Global Step 4350: Batch Loss=433.4525146484375; [Reconstruct, MDS, L2] Loss = [426.82733, 0.5520977, 0.0]
+Step 4400(22.0%); Global Step 4400: Batch Loss=440.80950927734375; [Reconstruct, MDS, L2] Loss = [434.43896, 0.5308776, 0.0]
+Step 4400(22.0%); Global Step 4400: Validation Loss=436.37457275390625; [Reconstruct, MDS, L2] Loss = [431.15253, 0.4351707, 0.0]; Min Val Loss = 436.37457275390625; No Improve = 0; 
+Step 4450(22.25%); Global Step 4450: Batch Loss=436.7147521972656; [Reconstruct, MDS, L2] Loss = [429.3568, 0.6131607, 0.0]
+Step 4500(22.5%); Global Step 4500: Batch Loss=442.39703369140625; [Reconstruct, MDS, L2] Loss = [434.70032, 0.64139193, 0.0]
+Step 4500(22.5%); Global Step 4500: Validation Loss=437.7782287597656; [Reconstruct, MDS, L2] Loss = [431.04288, 0.56127584, 0.0]; Min Val Loss = 436.37457275390625; No Improve = 1; 
+Step 4550(22.75%); Global Step 4550: Batch Loss=443.0489501953125; [Reconstruct, MDS, L2] Loss = [435.04657, 0.6668643, 0.0]
+Step 4600(23.0%); Global Step 4600: Batch Loss=436.8199157714844; [Reconstruct, MDS, L2] Loss = [429.91852, 0.5751177, 0.0]
+Step 4600(23.0%); Global Step 4600: Validation Loss=437.2738342285156; [Reconstruct, MDS, L2] Loss = [430.88745, 0.5321998, 0.0]; Min Val Loss = 436.37457275390625; No Improve = 2; 
+Step 4650(23.25%); Global Step 4650: Batch Loss=440.1213684082031; [Reconstruct, MDS, L2] Loss = [431.89893, 0.6852024, 0.0]
+Step 4700(23.5%); Global Step 4700: Batch Loss=440.9119873046875; [Reconstruct, MDS, L2] Loss = [434.95758, 0.49619973, 0.0]
+Step 4700(23.5%); Global Step 4700: Validation Loss=436.51739501953125; [Reconstruct, MDS, L2] Loss = [430.75177, 0.48046866, 0.0]; Min Val Loss = 436.37457275390625; No Improve = 3; 
+Step 4750(23.75%); Global Step 4750: Batch Loss=435.7911376953125; [Reconstruct, MDS, L2] Loss = [429.84296, 0.49568075, 0.0]
+Step 4800(24.0%); Global Step 4800: Batch Loss=436.5264892578125; [Reconstruct, MDS, L2] Loss = [431.02243, 0.45867056, 0.0]
+Step 4800(24.0%); Global Step 4800: Validation Loss=436.4056701660156; [Reconstruct, MDS, L2] Loss = [430.85425, 0.46261907, 0.0]; Min Val Loss = 436.37457275390625; No Improve = 4; 
+Step 4850(24.25%); Global Step 4850: Batch Loss=439.5066833496094; [Reconstruct, MDS, L2] Loss = [431.79868, 0.6423351, 0.0]
+Step 4900(24.5%); Global Step 4900: Batch Loss=438.4865417480469; [Reconstruct, MDS, L2] Loss = [431.43933, 0.5872676, 0.0]
+Step 4900(24.5%); Global Step 4900: Validation Loss=436.51129150390625; [Reconstruct, MDS, L2] Loss = [430.62857, 0.49022454, 0.0]; Min Val Loss = 436.37457275390625; No Improve = 5; 
+Step 4950(24.75%); Global Step 4950: Batch Loss=428.7073669433594; [Reconstruct, MDS, L2] Loss = [421.41946, 0.6073257, 0.0]
+Step 5000(25.0%); Global Step 5000: Batch Loss=440.77789306640625; [Reconstruct, MDS, L2] Loss = [434.01285, 0.56375325, 0.0]
+Step 5000(25.0%); Global Step 5000: Validation Loss=436.3424377441406; [Reconstruct, MDS, L2] Loss = [430.6932, 0.47076863, 0.0]; Min Val Loss = 436.3424377441406; No Improve = 0; 
+Step 5050(25.25%); Global Step 5050: Batch Loss=437.2132568359375; [Reconstruct, MDS, L2] Loss = [430.35287, 0.57169974, 0.0]
+Step 5100(25.5%); Global Step 5100: Batch Loss=435.67840576171875; [Reconstruct, MDS, L2] Loss = [430.0678, 0.46754965, 0.0]
+Step 5100(25.5%); Global Step 5100: Validation Loss=436.0193786621094; [Reconstruct, MDS, L2] Loss = [430.33823, 0.47342744, 0.0]; Min Val Loss = 436.0193786621094; No Improve = 0; 
+Step 5150(25.75%); Global Step 5150: Batch Loss=437.3922119140625; [Reconstruct, MDS, L2] Loss = [429.08405, 0.6923479, 0.0]
+Step 5200(26.0%); Global Step 5200: Batch Loss=439.1821594238281; [Reconstruct, MDS, L2] Loss = [432.66333, 0.5432361, 0.0]
+Step 5200(26.0%); Global Step 5200: Validation Loss=435.47027587890625; [Reconstruct, MDS, L2] Loss = [430.1955, 0.43955928, 0.0]; Min Val Loss = 435.47027587890625; No Improve = 0; 
+Step 5250(26.25%); Global Step 5250: Batch Loss=432.6795349121094; [Reconstruct, MDS, L2] Loss = [426.23267, 0.5372385, 0.0]
+Step 5300(26.5%); Global Step 5300: Batch Loss=437.632080078125; [Reconstruct, MDS, L2] Loss = [429.47934, 0.67939556, 0.0]
+Step 5300(26.5%); Global Step 5300: Validation Loss=435.7342834472656; [Reconstruct, MDS, L2] Loss = [430.01758, 0.4763921, 0.0]; Min Val Loss = 435.47027587890625; No Improve = 1; 
+Step 5350(26.75%); Global Step 5350: Batch Loss=436.1029968261719; [Reconstruct, MDS, L2] Loss = [429.9763, 0.51055837, 0.0]
+Step 5400(27.0%); Global Step 5400: Batch Loss=437.4653015136719; [Reconstruct, MDS, L2] Loss = [429.45218, 0.6677602, 0.0]
+Step 5400(27.0%); Global Step 5400: Validation Loss=437.19305419921875; [Reconstruct, MDS, L2] Loss = [429.83383, 0.6132677, 0.0]; Min Val Loss = 435.47027587890625; No Improve = 2; 
+Step 5450(27.25%); Global Step 5450: Batch Loss=428.26641845703125; [Reconstruct, MDS, L2] Loss = [423.13666, 0.42747906, 0.0]
+Step 5500(27.5%); Global Step 5500: Batch Loss=431.552978515625; [Reconstruct, MDS, L2] Loss = [421.20502, 0.8623297, 0.0]
+Step 5500(27.5%); Global Step 5500: Validation Loss=439.20355224609375; [Reconstruct, MDS, L2] Loss = [430.01035, 0.7660987, 0.0]; Min Val Loss = 435.47027587890625; No Improve = 3; 
+Step 5550(27.75%); Global Step 5550: Batch Loss=442.42816162109375; [Reconstruct, MDS, L2] Loss = [436.31137, 0.50973314, 0.0]
+Step 5600(28.0%); Global Step 5600: Batch Loss=429.1879577636719; [Reconstruct, MDS, L2] Loss = [422.64273, 0.5454361, 0.0]
+Step 5600(28.0%); Global Step 5600: Validation Loss=435.672119140625; [Reconstruct, MDS, L2] Loss = [429.84213, 0.48583335, 0.0]; Min Val Loss = 435.47027587890625; No Improve = 4; 
+Step 5650(28.25%); Global Step 5650: Batch Loss=434.915283203125; [Reconstruct, MDS, L2] Loss = [428.4729, 0.5368649, 0.0]
+Step 5700(28.5%); Global Step 5700: Batch Loss=443.1436767578125; [Reconstruct, MDS, L2] Loss = [435.6854, 0.6215225, 0.0]
+Step 5700(28.5%); Global Step 5700: Validation Loss=436.14697265625; [Reconstruct, MDS, L2] Loss = [429.66595, 0.54008174, 0.0]; Min Val Loss = 435.47027587890625; No Improve = 5; 
+Step 5750(28.75%); Global Step 5750: Batch Loss=434.73870849609375; [Reconstruct, MDS, L2] Loss = [428.11176, 0.5522464, 0.0]
+Step 5800(29.0%); Global Step 5800: Batch Loss=439.7626037597656; [Reconstruct, MDS, L2] Loss = [432.93768, 0.56874436, 0.0]
+No improve = 6, early stop!
+Training end. Total step = 5800

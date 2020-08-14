@@ -158,10 +158,11 @@ class CsrDataExplainer(object):
 
 if __name__ == '__main__':
 	from reader import get_raw_data, get_all_normal_data_names, get_all_imb_data_names
-	for data_name in get_all_normal_data_names() + get_all_imb_data_names():
+	# for data_name in get_all_normal_data_names() + get_all_imb_data_names():
+	for data_name in ['Shekhar_mouse_retina_IMB', 'mouse_bladder_cell_IMB', 'mouse_ES_cell_IMB']:
 		print(data_name)
 		features, labels = get_raw_data(data_name)
-		explainer = DataExplainer(features, labels, data_name=data_name, save=True)
+		explainer = CsrDataExplainer(features, labels, data_name=data_name, save=True)
 		explainer.run()
 
 

@@ -21,7 +21,7 @@ import phenograph as pg
 from constant import RESULT_PATH
 from preprocess import BasicPreprocessor, get_process_data
 from reader import get_raw_data
-from rp_kmeans import RPKMeans
+from rph_kmeans import RPHKMeans
 
 class DimOriginCltEvaluator(object):
 	def __init__(self):
@@ -197,7 +197,7 @@ def run_kmeans(init_list, n_init_list, cpu_use, repeat_times, data_names):
 	evaluator.run(arg_lists, cpu=cpu_use)
 
 
-def run_rp_kmeans(n_init_list, cpu_use, repeat_times, data_names):
+def run_rph_kmeans(n_init_list, cpu_use, repeat_times, data_names):
 	data_n_cluster = {}
 	for data_name in data_names:
 		_, labels = get_process_data(data_name)
@@ -206,9 +206,9 @@ def run_rp_kmeans(n_init_list, cpu_use, repeat_times, data_names):
 	arg_lists = []
 	for n_init, data_name, repeat_id in itertools.product(n_init_list, data_names, range(repeat_times)):
 		arg_lists.append([
-			RPKMeans,
+			RPHKMeans,
 			{'n_clusters': data_n_cluster[data_name], 'n_init': n_init},
-			'rp kmeans (default; {})'.format(n_init),
+			'rph kmeans (default; {})'.format(n_init),
 			data_name,
 			np.float32,
 			repeat_id
@@ -218,25 +218,31 @@ def run_rp_kmeans(n_init_list, cpu_use, repeat_times, data_names):
 
 
 if __name__ == '__main__':
-	from reader import get_all_sim_dropout_data_names
+	from reader import get_all_sim_dropout_data_names, get_all_imb_data_names
 	# example:
-	data_names = ['10X_PBMC']
-	repeat_times = 10
-	cpu_use = 20
+	data_names = [
+		# 'worm_neuron_cell_IMB',
+		# '10X_PBMC_IMB',
+		# 'PBMC_68k_IMB',
+		'sc_brain_IMB' # not run yet
+	]
+	repeat_times = 5
+	cpu_use = 10
 
-	run_phenograph(cpu_use=cpu_use, repeat_times=repeat_times, data_names=data_names)
+	# run_phenograph(cpu_use=cpu_use, repeat_times=repeat_times, data_names=data_names)
 	run_kmeans(init_list = ['random', 'k-means++'], n_init_list = [1, 10],
 		cpu_use=cpu_use, repeat_times=repeat_times,  data_names=data_names)
-	run_rp_kmeans(n_init_list=[1], cpu_use=cpu_use, repeat_times=repeat_times, data_names=data_names)
+	run_rph_kmeans(n_init_list=[1, 10], cpu_use=cpu_use, repeat_times=repeat_times, data_names=data_names)
 
 	evaluator = DimOriginCltEvaluator()
 	evaluator.gen_summary_csv([
-			'phenograph',
-			'kmeans (random; 1)',
-			'kmeans (random; 10)',
-			'kmeans (k-means++; 1)',
-			'kmeans (k-means++; 10)',
-			'rp kmeans (default; 1)'
+			# 'phenograph',
+			# 'kmeans (random; 1)',
+			# 'kmeans (random; 10)',
+			# 'kmeans (k-means++; 1)',
+			# 'kmeans (k-means++; 10)',
+			# 'rph kmeans (default; 1)',
+			'rph kmeans (default; 10)',
 		],
 		data_names=data_names,
 		repeat_times=repeat_times
