@@ -12,6 +12,7 @@ result
 	data_explain_paper: basic infomation of data
 	embed_mem_use_paper: memory of running AIDE and PCA
 src
+	reader.py: read data from raw file
 	preprocess.py: data preprocess
 	dim_origin_clt_eval.py: data preprocess + clustering
 	dim_reduce_clt_eval.py: data preprocess + dimension reduction + clustering
