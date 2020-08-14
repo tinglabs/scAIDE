@@ -152,7 +152,7 @@ The following figures show the results for a PBMC 68k dataset and the 1.3 millio
 ### - Scalability
 This section will be updated soon. The time taken to cluster 1.3 million cells (with roughly 20,000 genes) is less than 30 minutes, using 7GB of memory.
 
-## File Illustation
+## File Illustration
 - `sc_cluster`: Codes and results of clustering experiments using AIDE and RPH-kmeans.
 - `baseline`: Codes and results of clustering experiments using baseline tools (e.g. DCA, MAGIC, scScope, scDeepCluster, ...).
 - `demo`: A demo of data preprocessing, embedding with AIDE and clustering with RPH-kmeans.
