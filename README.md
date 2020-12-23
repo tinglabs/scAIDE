@@ -142,7 +142,8 @@ marker_plot <- plot_marker_expression(processed_markers, gene_levels=gene_levels
 
 ### - Example results
 The annotated labels for PBMC and Neural datasets are included in the folder 'Predicted labels'. The .RData files include the predicted annotated labels for these datasets. </br>
-The following figures show the results for a PBMC 68k dataset and the 1.3 million neural dataset. 
+</br>
+The following figures show the results for the PBMC 68k dataset and the 1.3 million neural dataset. 
 
 <p align="center">
   <img src=figures/pbmc.png alt="pbmc" title="pbmc" align="center" height="300">
