@@ -141,7 +141,7 @@ marker_plot <- plot_marker_expression(processed_markers, gene_levels=gene_levels
 ```
 
 ### - Example results
-We will provide the annotated labels for all the analysis given in the manuscript, these will be updated as .RData files soon. </br>
+The annotated labels for PBMC and Neural datasets are included in the folder 'Predicted labels'. The .RData files include the predicted annotated labels for these datasets. </br>
 The following figures show the results for a PBMC 68k dataset and the 1.3 million neural dataset. 
 
 <p align="center">
@@ -150,7 +150,7 @@ The following figures show the results for a PBMC 68k dataset and the 1.3 millio
 </p>
 
 ### - Scalability
-This section will be updated soon. The time taken to cluster 1.3 million cells (with roughly 20,000 genes) is less than 30 minutes, using 7GB of memory.
+The time taken to cluster 1.3 million cells (with roughly 20,000 genes) is less than 30 minutes, using 7GB of memory.
 
 ## File Illustration
 - `sc_cluster`: Codes and results of clustering experiments using AIDE and RPH-kmeans.
@@ -161,8 +161,7 @@ This section will be updated soon. The time taken to cluster 1.3 million cells (
 
 ## Citation & References
 
-This work is currently under submission. scAIDE: Clustering large-scale single-cell data reveals putative and rare cell types.
-
+scAIDE: clustering of large-scale single-cell RNA-seq data reveals putative and rare cell types. NAR Genomics and Bioinformatics 2020.
 
 References:
 ###### 1. Zheng, G. X. et al. (2017) Massively parallel digital transcriptional profiling of single cells. Nature Communications 8, 14049, doi:10.1038/ncomms14049
