@@ -31,7 +31,7 @@ KMeans (init = k-means++, n_init = 10): ARI = 0.5821 (0.0302), NMI = 0.7648 (0.0
 
 Here shows the history loss of AIDE:
 
-![history loss](aide_for_retina/loss.png)
+![history loss](aide_for_bladder/loss.png)
 
 ## For large data (e.g. cell_num > 100000)
 The code of analyzing the `Mouse retina` dataset are provided in `large.py`. Simply run the script (`python3 large.py `) and the running log is as follows:
