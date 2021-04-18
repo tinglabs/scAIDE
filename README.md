@@ -93,7 +93,9 @@ clt_labels = clt.fit_predict(sc_embedding)
 # In the case that n_clusters is unknown: In order to automatically detect the number of clusters, 
 # we implemented a weighted BIC value that determines the optimal k based on 'kneedle' point.
 
-# Important Note: Please set the parameter max_point to a smaller number for small datasets (i.e. less than 2000 cells). The max_point defaults to 2000 cells, and the RPH algorithm stops when the reduced number of cells is below max_point (in other words, RPH is not performed if the dataset is smaller than max_point).
+# Important Note: Please set the parameter max_point to a smaller number for small datasets (i.e. less than 2000 cells). 
+# The max_point defaults to 2000 cells, and the RPH algorithm stops when the reduced number of cells is below max_point.
+# In other words, RPH is not performed if the dataset is smaller than max_point.
 
 max_point = 50 # Defaults to 2000
 
