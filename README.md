@@ -92,10 +92,17 @@ clt_labels = clt.fit_predict(sc_embedding)
 
 # In the case that n_clusters is unknown: In order to automatically detect the number of clusters, 
 # we implemented a weighted BIC value that determines the optimal k based on 'kneedle' point.
+
+# Important Note: Please set the parameter max_point to a smaller number for small datasets (i.e. less than 2000 cells). The max_point defaults to 2000 cells, and the RPH algorithm stops when the reduced number of cells is below max_point (in other words, RPH is not performed if the dataset is smaller than max_point).
+
+max_point = 50 # Defaults to 2000
+
 from rph_kmeans import select_k_with_bic
 kmax = 30 # set the maximum number of k to explore
-optimal_k, _, _ = select_k_with_bic(sc_embedding, kmax=kmax)
-clt = RPHKMeans(n_init=10, n_clusters=optimal_k) # run RPH-kmeans with optimal_k to get the clustering results
+optimal_k, _, _ = select_k_with_bic(sc_embedding, kmax=kmax, point_reducer_kwargs={'max_point':max_point})
+
+clt = RPHKmeans(n_init=10, n_clusters=optimal_k, max_point = max_point) # run RPH-kmeans with optimal_k to get the clustering results
+
 clt_labels = clt.fit_predict(sc_embedding)
 
 # Output results
