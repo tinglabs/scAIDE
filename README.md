@@ -180,5 +180,5 @@ References:
 
 ## Maintenance
 
-If there's any questions / problems regarding scAIDE, please feel free to contact Ken Xie - xkk17@mails.tsinghua.edu.cn and Huang Yu - yuhuang-cst@foxmail.com. Thank you!
+If there's any questions / problems regarding scAIDE, please feel free to contact Ken Xie - kk.xie419@gmail.com and Huang Yu - yuhuang-cst@foxmail.com. Thank you!
 
